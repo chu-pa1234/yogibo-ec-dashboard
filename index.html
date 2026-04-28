@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Yogibo EC Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#080c14;color:#e2e8f0;font-family:'IBM Plex Mono',monospace;min-height:100vh}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:#0a0e1a}
+::-webkit-scrollbar-thumb{background:#1e2d45;border-radius:3px}
+#header{background:#0a0e1a;border-bottom:1px solid #1e2d45;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo{width:26px;height:26px;background:#f97316;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff}
+.app-title{font-size:13px;font-weight:600;color:#f1f5f9}
+.app-sub{font-size:9px;color:#334155;letter-spacing:1px;text-transform:uppercase}
+.pill{padding:4px 12px;border-radius:20px;border:1px solid #1e2d45;font-size:11px;cursor:pointer;background:transparent;color:#475569;font-family:inherit;transition:all .15s}
+.pill.active{border-color:#f97316;background:rgba(249,115,22,.1);color:#f97316}
+.pill-ch{padding:4px 12px;border-radius:20px;border:1px solid;font-size:11px;cursor:pointer;background:transparent;font-family:'Noto Sans JP',sans-serif;transition:all .15s}
+.pill-gran{padding:4px 11px;border-radius:20px;border:1px solid #1e2d45;font-size:11px;cursor:pointer;background:transparent;color:#475569;font-family:inherit;transition:all .15s}
+.pill-gran.active{border-color:#a78bfa;background:rgba(167,139,250,.15);color:#a78bfa}
+#filter-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px;background:#0d1320;border:1px solid #1e2d45;border-radius:8px;padding:10px 16px}
+.sep{width:1px;height:18px;background:#1e2d45;flex-shrink:0}
+.filter-label{font-size:9px;color:#334155;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+input[type=date],select{background:#080c14;color:#e2e8f0;border:1px solid #1e2d45;border-radius:4px;padding:5px 9px;font-size:11px;font-family:inherit;outline:none}
+input[type=date]:focus,select:focus{border-color:#3b82f6}
+.toggle{width:34px;height:17px;border-radius:9px;background:#1e2d45;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
+.toggle.on{background:#f97316}
+.toggle-knob{width:13px;height:13px;border-radius:7px;background:#fff;position:absolute;top:2px;left:2px;transition:left .2s}
+.toggle.on .toggle-knob{left:19px}
+#kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.kpi-card{background:#080c14;border:1px solid #1e2d45;border-radius:10px;padding:14px 16px;cursor:pointer;transition:all .2s;overflow:hidden}
+.kpi-card:hover{border-color:#2d3f5e}
+.kpi-card.active{background:#0d1320;border-width:2px}
+.kpi-label{font-size:9px;color:#334155;text-transform:uppercase;letter-spacing:.8px;font-family:'Noto Sans JP',sans-serif;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.kpi-value{font-size:22px;font-weight:600;letter-spacing:-.5px;margin-bottom:5px}
+.kpi-yoy{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.badge{font-size:9px;padding:1px 7px;border-radius:10px;font-weight:600}
+.badge.up{color:#22c55e;background:#22c55e18}
+.badge.dn{color:#ef4444;background:#ef444418}
+.kpi-prev{font-size:9px;color:#334155;font-family:'Noto Sans JP',sans-serif}
+.spark-wrap{border-top:1px solid #1e2d4560;padding-top:8px}
+.spark-legend{display:flex;justify-content:space-between;margin-bottom:3px;font-size:8px;color:#334155}
+.spark-canvas-wrap{position:relative;height:58px}
+#chart-tabs{display:flex;border-bottom:1px solid #1e2d45}
+.tab-btn{padding:7px 14px;border:none;background:transparent;font-family:'Noto Sans JP',sans-serif;font-size:11px;cursor:pointer;color:#475569;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.chart-card{background:#0d1320;border:1px solid #1e2d45;border-radius:0 8px 8px 8px;border-top:none;padding:18px 20px;margin-bottom:14px}
+.chart-header{font-size:10px;color:#475569;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;font-family:'Noto Sans JP',sans-serif;flex-wrap:wrap;gap:6px}
+.chart-canvas-wrap{position:relative;height:240px}
+#ch-yoy-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:20px;align-items:center}
+.ch-badge-list{display:flex;flex-direction:column;gap:8px}
+.ch-badge{background:#080c14;border-radius:6px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
+.ch-badge-label{font-size:10px;font-family:'Noto Sans JP',sans-serif;margin-bottom:3px}
+.ch-badge-val{font-size:15px;font-weight:600;color:#f1f5f9}
+.ch-badge-yoy{font-size:16px;font-weight:700}
+#sku-select-msg{display:flex;align-items:center;justify-content:center;height:220px;flex-direction:column;gap:8px}
+.sku-clear-btn{font-size:9px;color:#475569;background:transparent;border:1px solid #1e2d45;border-radius:4px;padding:2px 8px;cursor:pointer;font-family:inherit}
+.table-card{background:#0d1320;border:1px solid #1e2d45;border-radius:8px;padding:16px 20px}
+.table-header{font-size:10px;color:#475569;margin-bottom:12px;font-family:'Noto Sans JP',sans-serif;display:flex;justify-content:space-between;align-items:center}
+.data-table{width:100%;border-collapse:collapse;font-size:11px}
+.data-table th{padding:5px 10px;color:#334155;font-weight:500;font-family:'Noto Sans JP',sans-serif;font-size:9px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;border-bottom:1px solid #1e2d45}
+.data-table td{padding:7px 10px;border-bottom:1px solid #0d1929;white-space:nowrap}
+.data-table tbody tr{cursor:pointer}
+.data-table tbody tr:hover td{background:#0d192980}
+.mini-bar{background:#0d1929;border-radius:3px;height:5px;width:80px}
+.mini-bar-fill{height:100%;border-radius:3px}
+#upload-view{padding:20px 24px;max-width:840px}
+.upload-info{background:#0d1320;border:1px solid #1e2d45;border-radius:8px;padding:12px 16px;font-size:10px;color:#475569;line-height:2;margin-bottom:18px}
+.ch-tabs{display:flex;gap:2px;border-bottom:1px solid #1e2d45;margin-bottom:20px}
+.ch-tab{padding:8px 20px;background:transparent;border:none;cursor:pointer;border-bottom:2px solid transparent;color:#475569;font-size:12px;font-family:'Noto Sans JP',sans-serif;margin-bottom:-1px;transition:all .15s}
+.drop-zone{border:2px dashed #1e2d45;border-radius:8px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:16px}
+.drop-zone:hover{background:rgba(249,115,22,.05);border-color:#f97316}
+.map-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.map-row{display:flex;flex-direction:column;gap:3px}
+.map-label{font-size:9px;font-family:'Noto Sans JP',sans-serif;color:#475569}
+.preview-wrap{overflow-x:auto;margin-bottom:12px}
+.preview-table{font-size:9px;border-collapse:collapse;min-width:100%}
+.preview-table th{padding:3px 8px;background:#080c14;border-bottom:1px solid #1e2d45;text-align:left;white-space:nowrap;font-weight:500}
+.preview-table td{padding:3px 8px;color:#475569;white-space:nowrap}
+.apply-btn{padding:7px 18px;border-radius:5px;border:none;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.3px;color:#fff}
+.tip-box{padding:12px 16px;background:#0d1320;border:1px dashed #1e2d45;border-radius:8px;font-size:10px;color:#334155;line-height:2;margin-top:16px}
+.sample-badge{font-size:9px;color:#f97316;border:1px solid #f9731630;padding:2px 8px;border-radius:10px}
+.save-badge{font-size:9px;color:#22c55e}
+#main{padding:16px 24px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div id="header">
+  <div style="display:flex;align-items:center;gap:10px">
+    <div class="logo">Y</div>
+    <div><div class="app-title">Yogibo EC Analytics</div><div class="app-sub">UU · CVR · AOV · Revenue</div></div>
+  </div>
+  <div style="display:flex;gap:6px;align-items:center">
+    <span id="sample-badge" class="sample-badge">SAMPLE DATA</span>
+    <span id="save-badge" class="save-badge hidden"></span>
+    <button class="pill active" onclick="switchView('dashboard')">ダッシュボード</button>
+    <button class="pill" id="btn-upload" onclick="switchView('upload')">CSVインポート</button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="filter-bar">
+    <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+      <span class="filter-label">販路</span>
+      <button class="pill-ch" id="ch-rakuten" style="border-color:#e60027;background:rgba(230,0,39,.13);color:#e60027" onclick="toggleCh('rakuten',this)">楽天</button>
+      <button class="pill-ch" id="ch-amazon"  style="border-color:#ff9900;background:rgba(255,153,0,.13);color:#ff9900"  onclick="toggleCh('amazon',this)">Amazon</button>
+      <button class="pill-ch" id="ch-yahoo"   style="border-color:#c0006e;background:rgba(192,0,110,.13);color:#c0006e"  onclick="toggleCh('yahoo',this)">Yahoo!</button>
+      <button class="pill-ch" id="ch-own"     style="border-color:#3b82f6;background:rgba(59,130,246,.13);color:#3b82f6"  onclick="toggleCh('own',this)">自社EC</button>
+    </div>
+    <div class="sep"></div>
+    <div style="display:flex;gap:5px;align-items:center">
+      <span class="filter-label">粒度</span>
+      <button class="pill-gran" id="g-day"   onclick="setGran('day',this)">日次</button>
+      <button class="pill-gran" id="g-week"  onclick="setGran('week',this)">週次</button>
+      <button class="pill-gran active" id="g-month" onclick="setGran('month',this)">月次</button>
+      <button class="pill-gran" id="g-year"  onclick="setGran('year',this)">年次</button>
+    </div>
+    <div class="sep"></div>
+    <div style="display:flex;gap:5px;align-items:center">
+      <span class="filter-label">期間</span>
+      <input type="date" id="dt-start" value="2024-01-01" onchange="refresh()"/>
+      <span style="color:#334155;font-size:10px">〜</span>
+      <input type="date" id="dt-end"   value="2024-12-31" onchange="refresh()"/>
+    </div>
+    <div class="sep"></div>
+    <div style="display:flex;gap:5px;align-items:center">
+      <span class="filter-label">SKU</span>
+      <select id="sku-sel" onchange="selSKU=this.value;refresh()" style="max-width:150px"><option value="ALL">全SKU</option></select>
+    </div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:7px">
+      <span class="filter-label">YoY</span>
+      <div class="toggle on" id="yoy-toggle" onclick="toggleYoY(this)"><div class="toggle-knob"></div></div>
+    </div>
+  </div>
+
+  <div id="kpi-grid">
+    <div class="kpi-card active" id="card-uu" onclick="setMetric('uu')" style="border-color:#3b82f6">
+      <div class="kpi-label" style="color:#3b82f6"><span>UU</span><div style="width:6px;height:6px;border-radius:50%;background:#3b82f6"></div></div>
+      <div class="kpi-value" id="val-uu" style="color:#3b82f6">—</div>
+      <div class="kpi-yoy"><span class="badge" id="badge-uu">—</span><span class="kpi-prev" id="prev-uu">—</span></div>
+      <div class="spark-wrap"><div class="spark-legend"><span style="color:#3b82f6">━ 当年</span><span id="sl-uu">─ ─ 前年</span></div><div class="spark-canvas-wrap"><canvas id="spark-uu"></canvas></div></div>
+    </div>
+    <div class="kpi-card" id="card-cvr" onclick="setMetric('cvr')">
+      <div class="kpi-label"><span>CVR</span></div>
+      <div class="kpi-value" id="val-cvr" style="color:#22c55e">—</div>
+      <div class="kpi-yoy"><span class="badge" id="badge-cvr">—</span><span class="kpi-prev" id="prev-cvr">—</span></div>
+      <div class="spark-wrap"><div class="spark-legend"><span style="color:#22c55e">━ 当年</span><span id="sl-cvr">─ ─ 前年</span></div><div class="spark-canvas-wrap"><canvas id="spark-cvr"></canvas></div></div>
+    </div>
+    <div class="kpi-card" id="card-aov" onclick="setMetric('aov')">
+      <div class="kpi-label"><span>客単価</span></div>
+      <div class="kpi-value" id="val-aov" style="color:#a78bfa">—</div>
+      <div class="kpi-yoy"><span class="badge" id="badge-aov">—</span><span class="kpi-prev" id="prev-aov">—</span></div>
+      <div class="spark-wrap"><div class="spark-legend"><span style="color:#a78bfa">━ 当年</span><span id="sl-aov">─ ─ 前年</span></div><div class="spark-canvas-wrap"><canvas id="spark-aov"></canvas></div></div>
+    </div>
+    <div class="kpi-card" id="card-revenue" onclick="setMetric('revenue')">
+      <div class="kpi-label"><span>売上金額</span></div>
+      <div class="kpi-value" id="val-revenue" style="color:#f97316">—</div>
+      <div class="kpi-yoy"><span class="badge" id="badge-revenue">—</span><span class="kpi-prev" id="prev-revenue">—</span></div>
+      <div class="spark-wrap"><div class="spark-legend"><span style="color:#f97316">━ 当年</span><span id="sl-revenue">─ ─ 前年</span></div><div class="spark-canvas-wrap"><canvas id="spark-revenue"></canvas></div></div>
+    </div>
+  </div>
+
+  <div id="chart-tabs">
+    <button class="tab-btn" id="tab-trend"   onclick="setTab('trend')">詳細推移</button>
+    <button class="tab-btn" id="tab-channel" onclick="setTab('channel')">チャネル別YoY</button>
+    <button class="tab-btn" id="tab-sku"     onclick="setTab('sku')">SKUトレンド</button>
+  </div>
+  <div class="chart-card">
+    <div id="pane-trend">
+      <div class="chart-header">
+        <span id="main-chart-label" style="font-weight:500;color:#3b82f6">UU 推移</span>
+        <div style="display:flex;gap:14px;font-size:10px"><span id="mc-cy-legend" style="color:#3b82f6">━ 当年</span><span id="mc-py-legend" style="color:#475569">─ ─ 前年同期</span></div>
+      </div>
+      <div class="chart-canvas-wrap"><canvas id="main-chart"></canvas></div>
+    </div>
+    <div id="pane-channel" class="hidden">
+      <div class="chart-header"><span id="ch-chart-title" style="font-weight:500">チャネル別 UU 比較</span></div>
+      <div id="ch-yoy-grid">
+        <div class="chart-canvas-wrap" style="height:210px"><canvas id="ch-chart"></canvas></div>
+        <div class="ch-badge-list" id="ch-badge-list"></div>
+      </div>
+    </div>
+    <div id="pane-sku" class="hidden">
+      <div id="sku-select-msg">
+        <div style="font-size:28px;color:#1e2d45">↑</div>
+        <div style="color:#334155;font-size:12px;font-family:'Noto Sans JP',sans-serif">下のランキング行をクリックしてSKUを選択</div>
+      </div>
+      <div id="sku-chart-wrap" class="hidden">
+        <div class="chart-header">
+          <span id="sku-chart-title" style="font-weight:500"></span>
+          <button class="sku-clear-btn" onclick="clearSKU()">× 解除</button>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="sku-chart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-header"><span>SKUランキング（期間内）</span><span style="font-size:9px;color:#1e2d45">行クリック → SKUトレンド</span></div>
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead><tr>
+          <th style="text-align:left">#</th><th style="text-align:left">SKU</th><th style="text-align:left">商品名</th>
+          <th style="text-align:right;color:#3b82f6">UU</th><th style="text-align:right;color:#22c55e">CVR</th>
+          <th style="text-align:right;color:#a78bfa">客単価</th><th style="text-align:right;color:#f97316">売上金額</th>
+          <th style="text-align:right">構成比</th><th></th>
+        </tr></thead>
+        <tbody id="sku-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="upload-view" class="hidden">
+  <div style="font-size:13px;color:#94a3b8;font-family:'Noto Sans JP',sans-serif;margin-bottom:8px">CSVインポート</div>
+  <div class="upload-info">
+    チャネルを選択 → CSVファイルを選択 → 列マッピング確認 → 適用<br/>
+    <span style="color:#a78bfa">★ UU・注文件数の列があればCVRが自動計算されます　★ データはブラウザに自動保存されます</span>
+  </div>
+  <div class="ch-tabs">
+    <button class="ch-tab" id="ucht-rakuten" onclick="setUploadCh('rakuten',this)" style="color:#e60027;border-bottom-color:#e60027">楽天</button>
+    <button class="ch-tab" id="ucht-amazon"  onclick="setUploadCh('amazon',this)">Amazon</button>
+    <button class="ch-tab" id="ucht-yahoo"   onclick="setUploadCh('yahoo',this)">Yahoo!</button>
+    <button class="ch-tab" id="ucht-own"     onclick="setUploadCh('own',this)">自社EC</button>
+  </div>
+  <input type="file" id="csv-file" accept=".csv,.tsv" style="display:none" onchange="handleFile(event)"/>
+  <div class="drop-zone" id="drop-zone" onclick="document.getElementById('csv-file').click()">
+    <div id="dz-text">
+      <div style="font-size:28px;color:#1e2d45;margin-bottom:8px">↑</div>
+      <div style="font-size:11px;color:#475569;font-family:'Noto Sans JP',sans-serif">クリックしてCSVファイルを選択</div>
+    </div>
+  </div>
+  <div id="mapping-area" class="hidden">
+    <div style="background:#0d1320;border:1px solid #1e2d45;border-radius:8px;padding:16px 20px">
+      <div style="font-size:9px;color:#334155;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">列マッピング（色付き＝自動検出済）</div>
+      <div class="map-grid" id="map-grid"></div>
+      <div class="preview-wrap"><table class="preview-table" id="preview-table"></table></div>
+      <button class="apply-btn" id="apply-btn" onclick="applyMapping()" style="background:#f97316">データを適用・保存</button>
+    </div>
+  </div>
+  <div class="tip-box">
+    💡 列名は日本語・英語どちらも自動マッピング（アクセス数 / UU / sessions など）<br/>
+    💡 UU・注文件数がなくても売上・客単価は動作します<br/>
+    💡 データはブラウザに自動保存。次回アクセス時に自動復元
+  </div>
+</div>
+
+<script>
+const CHANNELS=[{id:"rakuten",label:"楽天",color:"#e60027"},{id:"amazon",label:"Amazon",color:"#ff9900"},{id:"yahoo",label:"Yahoo!",color:"#c0006e"},{id:"own",label:"自社EC",color:"#3b82f6"}];
+const METRICS={uu:{label:"UU",color:"#3b82f6",fmt:v=>v>=1000?`${(v/1000).toFixed(1)}K`:String(Math.round(v))},cvr:{label:"CVR",color:"#22c55e",fmt:v=>`${v.toFixed(2)}%`},aov:{label:"客単価",color:"#a78bfa",fmt:v=>`¥${Math.round(v).toLocaleString()}`},revenue:{label:"売上",color:"#f97316",fmt:v=>v>=1e6?`¥${(v/1e6).toFixed(1)}M`:v>=1000?`¥${(v/1000).toFixed(0)}K`:`¥${v}`}};
+const AUTO_DETECT={date:["日付","date","注文日","受注日","購入日","order_date","集計日"],sku:["SKU","sku","商品番号","item_id","ASIN","管理番号","商品コード"],revenue:["売上金額","revenue","売上","金額","sales","ordered_product_sales","税抜売上","売上高"],units:["販売数量","units","数量","個数","quantity","units_ordered"],orders:["注文件数","orders","受注件数","order_count","注文数","受注数","件数","transactions"],uu:["UU","uu","アクセス数","セッション数","sessions","visitors","PV"],product_name:["商品名","product_name","item_name","商品タイトル","title"]};
+const LS_KEY="yogibo-ec-v3";
+Chart.defaults.font.family="'IBM Plex Mono',monospace";Chart.defaults.color="#475569";
+
+let allData=[],isSample=true,activeMetric="uu",activeTab="trend",showYoY=true;
+let selCh=["rakuten","amazon","yahoo","own"],gran="month",selSKU="ALL";
+let uploadCh="rakuten",uploadHeaders=[],uploadRows=[],uploadMapping={};
+let charts={};
+
+function genSample(){
+  const sk=[{sku:"YGB-MAX-001",name:"Yogibo Max"},{sku:"YGB-SUP-001",name:"Yogibo Support"},{sku:"YGB-MIN-001",name:"Yogibo Mini"},{sku:"YGB-DRP-001",name:"Yogibo Drop"},{sku:"CVR-RD-001",name:"Cover Red"},{sku:"CVR-BL-001",name:"Cover Blue"}];
+  const base={rakuten:{rev:[42,38,55,61,48,52,80,70,58,65,90,110],uu:[8200,7400,10800,12000,9400,10200,15700,13800,11400,12800,17700,21600]},amazon:{rev:[35,31,44,50,42,48,68,60,50,55,75,88],uu:[5800,5100,7300,8300,6900,7900,11200,9900,8200,9100,12400,14500]},yahoo:{rev:[18,15,22,26,20,23,35,30,25,28,40,48],uu:[3600,3000,4400,5200,4000,4600,7000,6000,5000,5600,8000,9600]},own:{rev:[25,22,30,35,28,32,50,44,36,40,55,65],uu:[4100,3600,4900,5700,4600,5200,8200,7200,5900,6600,9000,10700]}};
+  const sh=[0.23,0.16,0.14,0.12,0.09,0.08];const rows=[];
+  [2023,2024].forEach(yr=>{const f=yr===2024?1.18:1,uf=yr===2024?1.08:1;for(let m=0;m<12;m++){const dim=new Date(yr,m+1,0).getDate();for(let d=1;d<=dim;d++){const ds=`${yr}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;const dow=new Date(yr,m,d).getDay(),ww=(dow===0||dow===6)?1.3:1;CHANNELS.forEach(ch=>{sk.forEach((s,si)=>{const n=0.55+Math.random()*0.9;const rev=Math.round(base[ch.id].rev[m]*1000*sh[si]*f*(1/dim)*ww*n);const uu=Math.round(base[ch.id].uu[m]*sh[si]*uf*(1/dim)*ww*n);const ord=Math.max(rev>0?1:0,Math.round(uu*(s.sku.startsWith("CVR")?0.033:0.028)*(0.7+Math.random()*0.6)));if(rev>0)rows.push({date:ds,channel:ch.id,sku:s.sku,name:s.name,revenue:rev,uu,orders:ord,units:Math.max(ord,Math.round(ord*(1+Math.random()*0.3)))});});});}}});
+  return rows;
+}
+
+function toP(date){if(gran==="day")return date.slice(0,10);if(gran==="week"){const dt=new Date(date),day=dt.getDay(),mon=new Date(dt);mon.setDate(dt.getDate()-(day===0?6:day-1));return mon.toISOString().slice(0,10);}if(gran==="month")return date.slice(0,7);return date.slice(0,4);}
+function pyShift(p,fwd){return p.replace(/^\d{4}/,y=>String(parseInt(y)+(fwd?1:-1)));}
+function pct(a,b){return b===0?null:((a-b)/b*100).toFixed(1);}
+function calcM(rows){const rev=rows.reduce((s,d)=>s+d.revenue,0),uu=rows.reduce((s,d)=>s+d.uu,0),ord=rows.reduce((s,d)=>s+d.orders,0);return{rev,uu,ord,cvr:uu>0?ord/uu*100:0,aov:ord>0?rev/ord:0};}
+function gv(m,k){return k==="uu"?m.uu:k==="cvr"?m.cvr:k==="aov"?m.aov:m.rev;}
+function fRows(s,e){return allData.filter(d=>{const dt=d.date.slice(0,10);return selCh.includes(d.channel)&&dt>=s&&dt<=e&&(selSKU==="ALL"||d.sku===selSKU);});}
+function getDR(){return{s:document.getElementById("dt-start").value,e:document.getElementById("dt-end").value};}
+
+function buildTrend(cy,py){
+  const cm={},pm={};
+  cy.forEach(d=>{const p=toP(d.date);if(!cm[p])cm[p]={uu:0,ord:0,rev:0};cm[p].uu+=d.uu;cm[p].ord+=d.orders;cm[p].rev+=d.revenue;});
+  py.forEach(d=>{const p=pyShift(toP(d.date),true);if(!pm[p])pm[p]={uu:0,ord:0,rev:0};pm[p].uu+=d.uu;pm[p].ord+=d.orders;pm[p].rev+=d.revenue;});
+  const keys=[...new Set([...Object.keys(cm),...Object.keys(pm)])].sort();
+  return keys.map(p=>{const c=cm[p]||{uu:0,ord:0,rev:0},y=pm[p]||{uu:0,ord:0,rev:0};return{period:p,cy_uu:c.uu,py_uu:y.uu,cy_cvr:c.uu>0?c.ord/c.uu*100:0,py_cvr:y.uu>0?y.ord/y.uu*100:0,cy_aov:c.ord>0?c.rev/c.ord:0,py_aov:y.ord>0?y.rev/y.ord:0,cy_revenue:c.rev,py_revenue:y.rev};});
+}
+
+function mkChart(id,cfg){if(charts[id]){charts[id].destroy();}const ctx=document.getElementById(id);if(!ctx)return;charts[id]=new Chart(ctx,cfg);}
+const GC="#111827",TK={color:"#334155",font:{size:9}};
+
+function drawSpark(metric,data){
+  const cyK="cy_"+metric,pyK="py_"+metric,m=METRICS[metric];
+  const ds=[{data:data.map(d=>d[cyK]),borderColor:m.color,borderWidth:2,pointRadius:0,tension:.3,fill:false,label:"当年"}];
+  if(showYoY)ds.push({data:data.map(d=>d[pyK]),borderColor:"#334155",borderWidth:1.5,pointRadius:0,tension:.3,fill:false,label:"前年",borderDash:[4,2]});
+  mkChart("spark-"+metric,{type:"line",data:{labels:data.map(d=>d.period),datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${m.fmt(c.parsed.y)}`},backgroundColor:"#080c14",borderColor:m.color+"50",borderWidth:1,titleColor:"#475569",bodyColor:m.color,padding:6}},scales:{x:{display:false},y:{display:false}}}});
+  document.getElementById("sl-"+metric).style.opacity=showYoY?1:0.2;
+}
+
+function updateKPIs(cy,py,td){
+  const spark=td.length>24?td.filter((_,i)=>i%Math.ceil(td.length/24)===0):td;
+  Object.keys(METRICS).forEach(k=>{
+    const m=METRICS[k],cv=gv(cy,k),pv=gv(py,k),up=cv>=pv;
+    const dr=k==="cvr"?(cv-pv).toFixed(2):pct(cv,pv);
+    const ds=k==="cvr"?`${up?"+":""}${dr}pt`:`${up?"+":""}${dr}%`;
+    document.getElementById("val-"+k).textContent=m.fmt(cv);
+    const b=document.getElementById("badge-"+k);b.textContent=`${up?"▲":"▼"} ${Math.abs(parseFloat(dr))}${k==="cvr"?"pt":"%"}`;b.className="badge "+(up?"up":"dn");
+    document.getElementById("prev-"+k).textContent="vs前年 "+m.fmt(pv);
+    drawSpark(k,spark);
+  });
+  Object.keys(METRICS).forEach(k=>{
+    const card=document.getElementById("card-"+k),m=METRICS[k];
+    if(k===activeMetric){card.classList.add("active");card.style.borderColor=m.color;card.querySelector(".kpi-label").style.color=m.color;}
+    else{card.classList.remove("active");card.style.borderColor="#1e2d45";card.querySelector(".kpi-label").style.color="#334155";}
+  });
+}
+
+function drawMain(td){
+  const m=METRICS[activeMetric],cyK="cy_"+activeMetric,pyK="py_"+activeMetric;
+  const ds=[{data:td.map(d=>d[cyK]),borderColor:m.color,borderWidth:2.5,pointRadius:0,tension:.3,fill:false,label:"当年"}];
+  if(showYoY)ds.push({data:td.map(d=>d[pyK]),borderColor:"#475569",borderWidth:1.5,pointRadius:0,tension:.3,fill:{target:"origin",above:"rgba(30,45,69,.25)"},label:"前年同期",borderDash:[5,3]});
+  document.getElementById("mc-cy-legend").style.color=m.color;
+  document.getElementById("mc-py-legend").classList.toggle("hidden",!showYoY);
+  document.getElementById("main-chart-label").textContent=m.label+" 推移";
+  document.getElementById("main-chart-label").style.color=m.color;
+  mkChart("main-chart",{type:"line",data:{labels:td.map(d=>d.period),datasets:ds},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${m.fmt(c.parsed.y)}`,afterBody:items=>{if(showYoY&&items.length===2){const a=items[0].parsed.y,b=items[1].parsed.y,up=a>=b;return["YoY "+(activeMetric==="cvr"?`${up?"+":""}${(a-b).toFixed(2)}pt`:`${up?"+":""}${pct(a,b)}%`)];}return[];}},backgroundColor:"#080c14",borderColor:"#1e2d45",borderWidth:1,titleColor:"#475569",bodyColor:"#e2e8f0",padding:10}},scales:{x:{grid:{color:GC},ticks:{...TK,maxTicksLimit:12}},y:{grid:{color:GC},ticks:{...TK,callback:v=>m.fmt(v).replace(/¥/,"")}}}}});
+}
+
+function drawChannel(cy,py){
+  const m=METRICS[activeMetric];
+  const cd=CHANNELS.filter(c=>selCh.includes(c.id)).map(ch=>{return{...ch,cy:calcM(cy.filter(d=>d.channel===ch.id)),py:calcM(py.filter(d=>d.channel===ch.id))};});
+  document.getElementById("ch-chart-title").textContent="チャネル別 "+m.label+" 比較";
+  document.getElementById("ch-chart-title").style.color=m.color;
+  const ds=[{data:cd.map(c=>gv(c.cy,activeMetric)),backgroundColor:cd.map(c=>c.color),label:"当年",borderRadius:3,borderWidth:0}];
+  if(showYoY)ds.push({data:cd.map(c=>gv(c.py,activeMetric)),backgroundColor:"#1e2d45",label:"前年",borderRadius:3,borderWidth:0});
+  mkChart("ch-chart",{type:"bar",data:{labels:cd.map(c=>c.label),datasets:ds},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${m.fmt(c.parsed.y)}`},backgroundColor:"#080c14",borderColor:"#1e2d45",borderWidth:1,titleColor:"#475569",bodyColor:"#e2e8f0",padding:8}},scales:{x:{grid:{color:GC},ticks:{color:"#94a3b8",font:{size:11}}},y:{grid:{color:GC},ticks:{...TK,callback:v=>m.fmt(v).replace(/¥/,"")},beginAtZero:true}}}});
+  const list=document.getElementById("ch-badge-list");list.innerHTML="";
+  cd.forEach(c=>{const cv=gv(c.cy,activeMetric),pv=gv(c.py,activeMetric),yv=activeMetric==="cvr"?(cv-pv).toFixed(2):pct(cv,pv),up=yv!=null&&parseFloat(yv)>=0;list.innerHTML+=`<div class="ch-badge" style="border:1px solid ${c.color}30"><div><div class="ch-badge-label" style="color:${c.color}">${c.label}</div><div class="ch-badge-val">${m.fmt(cv)}</div></div><div class="ch-badge-yoy" style="color:${up?"#22c55e":"#ef4444"}">${yv!=null?`${up?"+":""}${yv}${activeMetric==="cvr"?"pt":"%"}`:"—"}</div></div>`;});
+}
+
+function drawSKU(cy){
+  if(selSKU==="ALL"){document.getElementById("sku-select-msg").classList.remove("hidden");document.getElementById("sku-chart-wrap").classList.add("hidden");if(charts["sku-chart"]){charts["sku-chart"].destroy();}return;}
+  document.getElementById("sku-select-msg").classList.add("hidden");document.getElementById("sku-chart-wrap").classList.remove("hidden");
+  const m=METRICS[activeMetric];document.getElementById("sku-chart-title").textContent=selSKU+" — "+m.label;document.getElementById("sku-chart-title").style.color=m.color;
+  const map={};cy.filter(d=>d.sku===selSKU).forEach(d=>{const p=toP(d.date);if(!map[p])map[p]={};if(!map[p][d.channel])map[p][d.channel]={rev:0,uu:0,ord:0};map[p][d.channel].rev+=d.revenue;map[p][d.channel].uu+=d.uu;map[p][d.channel].ord+=d.orders;});
+  const labels=Object.keys(map).sort();
+  const ds=CHANNELS.filter(c=>selCh.includes(c.id)).map(ch=>({label:ch.label,borderColor:ch.color,borderWidth:2,pointRadius:0,tension:.3,fill:false,data:labels.map(p=>{const v=map[p]?.[ch.id];if(!v)return 0;return activeMetric==="uu"?v.uu:activeMetric==="cvr"?v.ord/Math.max(v.uu,1)*100:activeMetric==="aov"?v.rev/Math.max(v.ord,1):v.rev;})}));
+  mkChart("sku-chart",{type:"line",data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:"bottom",labels:{color:"#94a3b8",boxWidth:12,font:{size:10}}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${m.fmt(c.parsed.y)}`},backgroundColor:"#080c14",borderColor:"#1e2d45",borderWidth:1,titleColor:"#475569",bodyColor:"#e2e8f0",padding:8}},scales:{x:{grid:{color:GC},ticks:{...TK,maxTicksLimit:12}},y:{grid:{color:GC},ticks:{...TK,callback:v=>m.fmt(v).replace(/¥/,"")}}}}});
+}
+
+function updateTable(cy){
+  const map={};cy.forEach(d=>{if(!map[d.sku])map[d.sku]={sku:d.sku,name:d.name||"",revenue:0,uu:0,orders:0,units:0};map[d.sku].revenue+=d.revenue;map[d.sku].uu+=d.uu;map[d.sku].orders+=d.orders;map[d.sku].units+=d.units;});
+  const tot=Object.values(map).reduce((s,r)=>s+r.revenue,0);
+  const ranked=Object.values(map).sort((a,b)=>b.revenue-a.revenue).map((r,i)=>({...r,rank:i+1,cvr:r.uu>0?(r.orders/r.uu*100).toFixed(2):0,aov:r.orders>0?Math.round(r.revenue/r.orders):0,share:tot>0?(r.revenue/tot*100).toFixed(1):0}));
+  document.getElementById("sku-tbody").innerHTML=ranked.slice(0,10).map((r,i)=>`<tr onclick="selSKU='${r.sku}';document.getElementById('sku-sel').value='${r.sku}';setTab('sku')"><td style="color:${i<3?"#f97316":"#334155"};font-weight:600">${r.rank}</td><td style="color:#93c5fd;font-size:10px">${r.sku}</td><td style="color:#94a3b8;font-family:'Noto Sans JP',sans-serif">${r.name||"—"}</td><td style="text-align:right;color:${activeMetric==="uu"?"#3b82f6":"#64748b"}">${r.uu>=1000?`${(r.uu/1000).toFixed(1)}K`:r.uu}</td><td style="text-align:right;color:${activeMetric==="cvr"?"#22c55e":"#64748b"}">${r.cvr}%</td><td style="text-align:right;color:${activeMetric==="aov"?"#a78bfa":"#64748b"}">¥${r.aov.toLocaleString()}</td><td style="text-align:right;color:${activeMetric==="revenue"?"#f97316":"#f1f5f9"};font-weight:500">¥${r.revenue.toLocaleString()}</td><td style="text-align:right;color:#a78bfa">${r.share}%</td><td><div class="mini-bar"><div class="mini-bar-fill" style="width:${Math.min(100,r.share*4)}%;background:${i<3?"#f97316":"#1e3a5f"}"></div></div></td></tr>`).join("");
+  const sel=document.getElementById("sku-sel"),cur=sel.value;sel.innerHTML=`<option value="ALL">全SKU</option>`+ranked.map(r=>`<option value="${r.sku}">${r.sku}</option>`).join("");if(ranked.find(r=>r.sku===cur))sel.value=cur;
+}
+
+function refresh(){
+  const{s,e}=getDR(),ps=pyShift(s,false),pe=pyShift(e,false);
+  const cy=fRows(s,e),py=fRows(ps,pe);
+  const td=buildTrend(cy,py);
+  updateKPIs(calcM(cy),calcM(py),td);
+  updateTable(cy);
+  if(activeTab==="trend")drawMain(td);
+  else if(activeTab==="channel")drawChannel(cy,py);
+  else drawSKU(cy);
+  ["trend","channel","sku"].forEach(t=>{const b=document.getElementById("tab-"+t);b.style.color=t===activeTab?METRICS[activeMetric].color:"#475569";b.style.borderBottomColor=t===activeTab?METRICS[activeMetric].color:"transparent";});
+}
+
+function toggleCh(id,btn){
+  if(selCh.includes(id)){if(selCh.length<=1)return;selCh=selCh.filter(c=>c!==id);}else selCh.push(id);
+  const ch=CHANNELS.find(c=>c.id===id);
+  if(selCh.includes(id)){btn.style.borderColor=ch.color;btn.style.background=ch.color+"22";btn.style.color=ch.color;}
+  else{btn.style.borderColor="#1e2d45";btn.style.background="transparent";btn.style.color="#334155";}
+  refresh();
+}
+function setGran(g,btn){gran=g;document.querySelectorAll(".pill-gran").forEach(b=>b.classList.remove("active"));btn.classList.add("active");refresh();}
+function toggleYoY(el){showYoY=!showYoY;el.classList.toggle("on",showYoY);refresh();}
+function setMetric(m){activeMetric=m;refresh();}
+function setTab(t){
+  activeTab=t;
+  ["trend","channel","sku"].forEach(id=>document.getElementById("pane-"+id).classList.toggle("hidden",id!==t));
+  refresh();
+}
+function clearSKU(){selSKU="ALL";document.getElementById("sku-sel").value="ALL";refresh();}
+function switchView(v){
+  document.getElementById("main").classList.toggle("hidden",v!=="dashboard");
+  document.getElementById("upload-view").classList.toggle("hidden",v!=="upload");
+  document.querySelectorAll("#header .pill").forEach((b,i)=>{b.classList.toggle("active",i===(v==="dashboard"?0:1));});
+  if(v==="dashboard")refresh();
+}
+
+function setUploadCh(ch,btn){
+  uploadCh=ch;
+  document.querySelectorAll(".ch-tab").forEach(b=>{b.style.color="";b.style.borderBottomColor="transparent";});
+  const c=CHANNELS.find(x=>x.id===ch);btn.style.color=c.color;btn.style.borderBottomColor=c.color;
+  document.getElementById("mapping-area").classList.add("hidden");
+}
+function parseCSV(text){const lines=text.trim().split(/\r?\n/);if(lines.length<2)return{headers:[],rows:[]};const headers=lines[0].split(",").map(h=>h.replace(/^"|"$/g,"").trim());const rows=lines.slice(1).map(l=>{const v=l.split(",").map(x=>x.replace(/^"|"$/g,"").trim());return Object.fromEntries(headers.map((h,i)=>[h,v[i]??""]));}).filter(r=>Object.values(r).some(x=>x!==""));return{headers,rows};}
+function detectMap(headers){const m={};Object.entries(AUTO_DETECT).forEach(([f,kws])=>{const kw=kws.find(k=>headers.some(h=>h.toLowerCase().includes(k.toLowerCase())));if(kw){const h=headers.find(h=>h.toLowerCase().includes(kw.toLowerCase()));if(h)m[f]=h;}});return m;}
+function handleFile(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const{headers,rows}=parseCSV(ev.target.result);uploadHeaders=headers;uploadRows=rows;uploadMapping=detectMap(headers);renderMapUI();
+    const ch=CHANNELS.find(c=>c.id===uploadCh);
+    document.getElementById("dz-text").innerHTML=`<div style="font-size:11px;color:${ch.color};margin-bottom:4px">✓ ${rows.length}行 読み込み済</div><div style="font-size:10px;color:#334155">別ファイルを選ぶ場合はクリック</div>`;
+    document.getElementById("drop-zone").style.borderColor=ch.color;
+  };
+  reader.readAsText(file,"UTF-8");e.target.value="";
+}
+function renderMapUI(){
+  document.getElementById("mapping-area").classList.remove("hidden");
+  const fields=[{key:"date",label:"日付",req:true},{key:"sku",label:"SKU/商品番号",req:true},{key:"revenue",label:"売上金額",req:true},{key:"uu",label:"アクセス数(UU)",req:false},{key:"orders",label:"注文件数",req:false},{key:"units",label:"販売数量",req:false},{key:"product_name",label:"商品名",req:false}];
+  const ch=CHANNELS.find(c=>c.id===uploadCh);
+  document.getElementById("map-grid").innerHTML=fields.map(f=>`<div class="map-row"><label class="map-label" style="color:${["uu","orders"].includes(f.key)?"#a78bfa":"#475569"}">${f.label}${f.req?'<span style="color:#ef4444">*</span>':""}</label><select onchange="uploadMapping['${f.key}']=this.value" style="width:100%"><option value="">— 未設定 —</option>${uploadHeaders.map(h=>`<option value="${h}"${uploadMapping[f.key]===h?" selected":""}>${h}</option>`).join("")}</select></div>`).join("");
+  document.getElementById("preview-table").innerHTML=`<thead><tr>${uploadHeaders.map(h=>`<th style="color:${Object.values(uploadMapping).includes(h)?ch.color:"#334155"}">${h}</th>`).join("")}</tr></thead><tbody>${uploadRows.slice(0,3).map(r=>`<tr>${uploadHeaders.map(h=>`<td>${r[h]}</td>`).join("")}</tr>`).join("")}</tbody>`;
+  document.getElementById("apply-btn").style.background=ch.color;
+}
+function applyMapping(){
+  if(!uploadMapping.date||!uploadMapping.sku||!uploadMapping.revenue){alert("日付・SKU・売上金額は必須です");return;}
+  const newRows=uploadRows.map(r=>({date:r[uploadMapping.date]??"",channel:uploadCh,sku:r[uploadMapping.sku]??"",name:uploadMapping.product_name?(r[uploadMapping.product_name]??""):"",revenue:parseFloat((r[uploadMapping.revenue]??"0").replace(/[¥,\s]/g,""))||0,uu:parseInt((r[uploadMapping.uu]??"0").replace(/,/g,""))||0,orders:parseInt((r[uploadMapping.orders]??"0").replace(/,/g,""))||0,units:parseInt((r[uploadMapping.units]??"1").replace(/,/g,""))||1})).filter(r=>r.date&&r.sku&&r.revenue>0);
+  allData=[...allData.filter(d=>d.channel!==uploadCh),...newRows];isSample=false;
+  document.getElementById("sample-badge").classList.add("hidden");
+  try{localStorage.setItem(LS_KEY,JSON.stringify({data:allData}));}catch(e){}
+  const el=document.getElementById("save-badge");el.textContent="保存済 ✓";el.classList.remove("hidden");setTimeout(()=>el.classList.add("hidden"),2000);
+  document.getElementById("ucht-"+uploadCh).textContent=CHANNELS.find(c=>c.id===uploadCh).label+" ✓";
+}
+
+window.addEventListener("load",()=>{
+  try{const s=localStorage.getItem(LS_KEY);if(s){const{data}=JSON.parse(s);if(data?.length>0){allData=data;isSample=false;document.getElementById("sample-badge").classList.add("hidden");}}}catch(e){}
+  if(!allData.length){allData=genSample();}
+  setTab("trend");
+  refresh();
+});
+</script>
+</body>
+</html>
