@@ -28,12 +28,12 @@ def clean_number(val):
     return re.sub(r"[￥¥,%\s]", "", val)
 
 def extract_date(filename):
-    """ファイル名から日付を抽出: BusinessReport-30-04-23.csv → 2026-04-23"""
-    m = re.search(r"-(\d{2})-(\d{2})\.csv$", filename)
+    """ファイル名から日付を抽出: BusinessReport-26-04-30.csv → 2026-04-30"""
+    m = re.search(r"-(\d{2})-(\d{2})-(\d{2})\.csv$", filename)
     if not m:
         return None
-    month, day = m.group(1), m.group(2)
-    return f"2026-{month}-{day}"
+    yy, month, day = m.group(1), m.group(2), m.group(3)
+    return f"20{yy}-{month}-{day}"
 
 def process_files(folder, out_path):
     files = sorted(glob.glob(os.path.join(folder, "*.csv")))

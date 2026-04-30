@@ -240,7 +240,7 @@ input[type=date]:focus,select:focus{border-color:#3b82f6}
   </div>
   <div id="guide-amazon" class="ch-guide">
     <div class="guide-row"><span class="guide-label">取得場所</span><span class="guide-val">セラーセントラル Japan → ビジネスレポート →「ASIN別 親商品別の詳細ページ 売上・トラフィック」</span></div>
-    <div class="guide-row"><span class="guide-label">ファイル名ルール</span><span class="guide-val">日別でDL後、ファイル名に日付を含める（例: <code>BusinessReport-30-04-23.csv</code>）→ <code>scripts/amazon_merge.py</code> で結合してからインポート</span></div>
+    <div class="guide-row"><span class="guide-label">ファイル名ルール</span><span class="guide-val">日別でDL後、ファイル名に日付を入力する（例: 26年4月30日 → <code>BusinessReport-26-04-30.csv</code>）→ <code>scripts/amazon_merge.py</code> で結合してからインポート</span></div>
   </div>
   <div id="guide-yahoo" class="ch-guide hidden">
     <div class="guide-row"><span class="guide-label">取得場所</span><span class="guide-val">未設定</span></div>
@@ -481,7 +481,8 @@ async function applyMapping(){
   const btn=document.getElementById("apply-btn");btn.textContent="保存中...";btn.disabled=true;
   try{
     await saveToFirestore(newRows);
-    allData=[...allData.filter(d=>d.channel!==uploadCh),...newRows];isSample=false;
+    const newKeys=new Set(newRows.map(r=>r.date+"_"+r.sku));
+    allData=[...allData.filter(d=>!(d.channel===uploadCh&&newKeys.has(d.date+"_"+d.sku))),...newRows];isSample=false;
     loadedRange={s:null,e:null};
     document.getElementById("sample-badge").classList.add("hidden");
     const el=document.getElementById("save-badge");el.textContent="保存済 ✓";el.classList.remove("hidden");setTimeout(()=>el.classList.add("hidden"),2000);
