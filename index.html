@@ -255,7 +255,7 @@ firebase.initializeApp({apiKey:"AIzaSyBDnQEypk4i7QU15qKbR1AGKAHZ0qkMgK0",authDom
 const db=firebase.firestore();
 const CHANNELS=[{id:"rakuten",label:"楽天",color:"#e60027"},{id:"amazon",label:"Amazon",color:"#ff9900"},{id:"yahoo",label:"Yahoo!",color:"#c0006e"},{id:"own",label:"自社EC",color:"#3b82f6"}];
 const METRICS={uu:{label:"UU",color:"#3b82f6",fmt:v=>v>=1000?`${(v/1000).toFixed(1)}K`:String(Math.round(v))},cvr:{label:"CVR",color:"#22c55e",fmt:v=>`${v.toFixed(2)}%`},aov:{label:"客単価",color:"#a78bfa",fmt:v=>`¥${Math.round(v).toLocaleString()}`},revenue:{label:"売上",color:"#f97316",fmt:v=>v>=1e6?`¥${(v/1e6).toFixed(1)}M`:v>=1000?`¥${(v/1000).toFixed(0)}K`:`¥${v}`}};
-const AUTO_DETECT={date:["日付","date","注文日","受注日","購入日","order_date","集計日"],sku:["SKU","sku","商品番号","item_id","ASIN","管理番号","商品コード"],revenue:["売上金額","revenue","売上","金額","sales","ordered_product_sales","税抜売上","売上高"],units:["販売数量","units","数量","個数","quantity","units_ordered"],orders:["注文件数","orders","受注件数","order_count","注文数","受注数","件数","transactions"],uu:["UU","uu","アクセス数","セッション数","sessions","visitors","PV"],product_name:["商品名","product_name","item_name","商品タイトル","title"]};
+const AUTO_DETECT={date:["日付","date","注文日","受注日","購入日","order_date","集計日"],sku:["SKU","sku","商品番号","item_id","ASIN","管理番号","商品コード"],revenue:["売上金額","revenue","売上","金額","sales","ordered_product_sales","税抜売上","売上高","注文商品の売上額"],units:["販売数量","units","数量","個数","quantity","units_ordered","注文された商品点数"],orders:["注文件数","orders","受注件数","order_count","注文数","受注数","件数","transactions","注文品目総数"],uu:["UU","uu","アクセス数","セッション数","sessions","visitors","PV"],product_name:["商品名","product_name","item_name","商品タイトル","title"]};
 const LS_KEY="yogibo-ec-v3";
 Chart.defaults.font.family="'IBM Plex Mono',monospace";Chart.defaults.color="#475569";
 
@@ -452,7 +452,7 @@ function renderMapUI(){
 }
 async function applyMapping(){
   if(!uploadMapping.date||!uploadMapping.sku||!uploadMapping.revenue){alert("日付・SKU・売上金額は必須です");return;}
-  const newRows=uploadRows.map(r=>({date:r[uploadMapping.date]??"",channel:uploadCh,sku:r[uploadMapping.sku]??"",name:uploadMapping.product_name?(r[uploadMapping.product_name]??""):"",revenue:parseFloat((r[uploadMapping.revenue]??"0").replace(/[¥,\s]/g,""))||0,uu:parseInt((r[uploadMapping.uu]??"0").replace(/,/g,""))||0,orders:parseInt((r[uploadMapping.orders]??"0").replace(/,/g,""))||0,units:parseInt((r[uploadMapping.units]??"1").replace(/,/g,""))||1})).filter(r=>r.date&&r.sku&&r.revenue>0);
+  const newRows=uploadRows.map(r=>({date:r[uploadMapping.date]??"",channel:uploadCh,sku:r[uploadMapping.sku]??"",name:uploadMapping.product_name?(r[uploadMapping.product_name]??""):"",revenue:parseFloat((r[uploadMapping.revenue]??"0").replace(/[￥¥,\s]/g,""))||0,uu:parseInt((r[uploadMapping.uu]??"0").replace(/,/g,""))||0,orders:parseInt((r[uploadMapping.orders]??"0").replace(/,/g,""))||0,units:parseInt((r[uploadMapping.units]??"1").replace(/,/g,""))||1})).filter(r=>r.date&&r.sku&&r.revenue>0);
   const btn=document.getElementById("apply-btn");btn.textContent="保存中...";btn.disabled=true;
   try{
     await saveToFirestore(newRows);
