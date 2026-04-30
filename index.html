@@ -243,8 +243,8 @@ input[type=date]:focus,select:focus{border-color:#3b82f6}
     <div class="guide-row"><span class="guide-label">ファイル名ルール</span><span class="guide-val">日別でDL後、ファイル名に日付を入力する（例: 26年4月30日 → <code>BusinessReport-26-04-30.csv</code>）</span></div>
   </div>
   <div id="guide-yahoo" class="ch-guide hidden">
-    <div class="guide-row"><span class="guide-label">取得場所</span><span class="guide-val">未設定</span></div>
-    <div class="guide-row"><span class="guide-label">ファイル名ルール</span><span class="guide-val">未設定</span></div>
+    <div class="guide-row"><span class="guide-label">取得場所</span><span class="guide-val" style="display:flex;align-items:center;gap:10px">Yahoo!ストアクリエイター Pro → 販売管理 → 商品別レポート（条件: 日別）<a href="https://pro.store.yahoo.co.jp/pro.yogibo-store/sales_manage/item_report" target="_blank" style="padding:4px 12px;background:#c0006e;color:#fff;border-radius:4px;font-size:10px;font-weight:600;text-decoration:none;white-space:nowrap;font-family:'IBM Plex Mono',monospace">開く ↗</a></span></div>
+    <div class="guide-row"><span class="guide-label">ファイル名ルール</span><span class="guide-val">日別でDL後、ファイル名はそのまま使用可（例: <code>yogibo-store-item_report_260429.csv</code>）→ <code>scripts/yahoo_merge.py</code> で結合してからインポート</span></div>
   </div>
   <div id="guide-own" class="ch-guide hidden">
     <div class="guide-row"><span class="guide-label">取得場所</span><span class="guide-val">未設定</span></div>
@@ -278,7 +278,7 @@ firebase.initializeApp({apiKey:"AIzaSyBDnQEypk4i7QU15qKbR1AGKAHZ0qkMgK0",authDom
 const db=firebase.firestore();
 const CHANNELS=[{id:"rakuten",label:"楽天",color:"#e60027"},{id:"amazon",label:"Amazon",color:"#ff9900"},{id:"yahoo",label:"Yahoo!",color:"#c0006e"},{id:"own",label:"自社EC",color:"#3b82f6"}];
 const METRICS={uu:{label:"UU",color:"#3b82f6",fmt:v=>v>=1000?`${(v/1000).toFixed(1)}K`:String(Math.round(v))},cvr:{label:"CVR",color:"#22c55e",fmt:v=>`${v.toFixed(2)}%`},aov:{label:"客単価",color:"#a78bfa",fmt:v=>`¥${Math.round(v).toLocaleString()}`},revenue:{label:"売上",color:"#f97316",fmt:v=>v>=1e6?`¥${(v/1e6).toFixed(1)}M`:v>=1000?`¥${(v/1000).toFixed(0)}K`:`¥${v}`}};
-const AUTO_DETECT={date:["日付","date","注文日","受注日","購入日","order_date","集計日"],sku:["SKU","sku","商品番号","item_id","ASIN","管理番号","商品コード"],revenue:["売上金額","revenue","売上","金額","sales","ordered_product_sales","税抜売上","売上高","注文商品の売上額"],units:["販売数量","units","数量","個数","quantity","units_ordered","注文された商品点数"],orders:["注文件数","orders","受注件数","order_count","注文数","受注数","件数","transactions","注文品目総数"],uu:["UU","uu","アクセス数","セッション数","sessions","visitors","PV"],product_name:["商品名","product_name","item_name","商品タイトル","title"]};
+const AUTO_DETECT={date:["日付","date","注文日","受注日","購入日","order_date","集計日"],sku:["SKU","sku","商品番号","item_id","ASIN","管理番号","商品コード"],revenue:["売上金額","revenue","売上","金額","sales","ordered_product_sales","税抜売上","売上高","注文商品の売上額","売上合計値（税込）"],units:["販売数量","units","数量","個数","quantity","units_ordered","注文された商品点数"],orders:["注文件数","orders","受注件数","order_count","注文数","受注数","件数","transactions","注文品目総数","注文数合計"],uu:["UU","uu","アクセス数","セッション数","sessions","visitors","PV","訪問者数"],product_name:["商品名","product_name","item_name","商品タイトル","title"]};
 const LS_KEY="yogibo-ec-v3";
 Chart.defaults.font.family="'IBM Plex Mono',monospace";Chart.defaults.color="#475569";
 
