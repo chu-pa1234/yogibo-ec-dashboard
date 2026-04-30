@@ -58,15 +58,16 @@ def load_asin_mapping(xlsx_path):
 def clean_number(val):
     return re.sub(r"[￥¥,%\s]", "", val)
 
-def extract_date(filename):
+def extract_date(filename, year_override=None):
     """ファイル名から日付を抽出: BusinessReport-26-04-30.csv → 2026-04-30"""
     m = re.search(r"-(\d{2})-(\d{2})-(\d{2})\.csv$", filename)
     if not m:
         return None
     yy, month, day = m.group(1), m.group(2), m.group(3)
-    return f"20{yy}-{month}-{day}"
+    year = str(year_override) if year_override else f"20{yy}"
+    return f"{year}-{month}-{day}"
 
-def process_files(folder, out_path, asin_map):
+def process_files(folder, out_path, asin_map, year_override=None):
     files = sorted(glob.glob(os.path.join(folder, "*.csv")))
     files = [f for f in files if os.path.basename(f) != os.path.basename(out_path)]
 
@@ -79,7 +80,7 @@ def process_files(folder, out_path, asin_map):
 
     for fpath in files:
         fname = os.path.basename(fpath)
-        data_date = extract_date(fname)
+        data_date = extract_date(fname, year_override)
         if not data_date:
             print(f"  スキップ（日付を抽出できません）: {fname}")
             continue
@@ -110,11 +111,25 @@ def process_files(folder, out_path, asin_map):
         print("変換できる行がありませんでした")
         return 0
 
+    # 同一 date+channel+代表コード を集計
+    aggregated = {}
+    for row in rows_out:
+        key = (row["date"], row["channel"], row["SKU"])
+        if key not in aggregated:
+            aggregated[key] = dict(row)
+        else:
+            for col in ("UU", "注文件数", "販売数量", "売上金額"):
+                aggregated[key][col] = str(int(aggregated[key].get(col) or 0) + int(row.get(col) or 0))
+
+    aggregated_rows = list(aggregated.values())
+    if len(aggregated_rows) < len(rows_out):
+        print(f"  集計: {len(rows_out)}行 → {len(aggregated_rows)}行（同一代表コードを合算）")
+
     fieldnames = ["date", "channel", "SKU", "商品名", "UU", "注文件数", "販売数量", "売上金額"]
     with open(out_path, "w", encoding="utf-8-sig", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerows(rows_out)
+        writer.writerows(aggregated_rows)
 
     if unmapped_in_data:
         warn_path = os.path.join(os.path.dirname(out_path), "unmapped_asins.txt")
@@ -129,6 +144,7 @@ def main():
     parser.add_argument("--folder",  required=True)
     parser.add_argument("--mapping", default=None)
     parser.add_argument("--out",     default=None)
+    parser.add_argument("--year",    type=int, default=None, help="年を上書き（例: 2026）")
     args = parser.parse_args()
 
     out_path = args.out or os.path.join(args.folder, "amazon_merged.csv")
@@ -145,7 +161,7 @@ def main():
                 f.write("\n".join(unmapped))
         print()
 
-    count = process_files(args.folder, out_path, asin_map)
+    count = process_files(args.folder, out_path, asin_map, year_override=args.year)
     if count:
         print(f"\n完了: {count}行 → {out_path}")
 
