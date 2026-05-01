@@ -24,21 +24,21 @@ from datetime import date, timedelta
 from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).parent
+sys.path.insert(0, str(SCRIPTS_DIR))
 
-# ダウンロード先フォルダ
-DOWNLOAD_DIRS = {
-    "amazon":  r"C:\Users\d.nakamura\Downloads\AMZ",
-    "yahoo":   r"C:\Users\d.nakamura\Downloads\PPM",
-    "rakuten": r"C:\Users\d.nakamura\Downloads\RKT",
-    "own_ec":  r"C:\Users\d.nakamura\Downloads\SPF",
-}
+try:
+    from user_config import DOWNLOAD_DIRS, AMAZON_MAPPING_FILE, SHOPIFY_MAPPING_FILE
+except ImportError:
+    print("[エラー] scripts/user_config.py が見つかりません。")
+    print("  scripts/user_config.example.py を user_config.py にコピーして設定してください。")
+    sys.exit(1)
 
 # マージスクリプトと引数
 MERGE_COMMANDS = {
     "amazon": lambda dirs: [
         sys.executable, str(SCRIPTS_DIR / "amazon_merge.py"),
         "--folder", dirs["amazon"],
-        "--mapping", r"C:\Users\d.nakamura\Downloads\Amazon代表コードと親ASIN突合せ表.xlsx",
+        "--mapping", AMAZON_MAPPING_FILE,
         "--year", str(date.today().year),
         "--out", str(Path(dirs["amazon"]) / "amazon_merged.csv"),
     ],
@@ -55,7 +55,7 @@ MERGE_COMMANDS = {
     "own_ec": lambda dirs: [
         sys.executable, str(SCRIPTS_DIR / "own_ec_merge.py"),
         "--folder", dirs["own_ec"],
-        "--mapping", r"C:\Users\d.nakamura\Downloads\Book2.csv",
+        "--mapping", SHOPIFY_MAPPING_FILE,
         "--out", str(Path(dirs["own_ec"]) / "own_ec_merged.csv"),
     ],
 }

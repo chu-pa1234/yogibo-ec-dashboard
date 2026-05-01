@@ -1,0 +1,15 @@
+# 個人設定（各自で作成）
+scripts/user_config.py
+
+# ブラウザセッション（認証情報を含むため共有しない）
+scripts/sessions/
+
+# マージ済みCSV（一時ファイル）
+*_merged.csv
+unmapped_asins.txt
+own_ec_unmatched.txt
+
+# Python
+__pycache__/
+*.pyc
+.venv/
