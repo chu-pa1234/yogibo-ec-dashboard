@@ -4,9 +4,11 @@
 """
 
 import os
+import sys
 import asyncio
 from pathlib import Path
 from playwright.async_api import async_playwright, BrowserContext
+sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 SESSION_BASE = Path(__file__).parent.parent / "sessions"
 

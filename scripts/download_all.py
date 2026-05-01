@@ -22,6 +22,7 @@ import sys
 import os
 from datetime import date, timedelta
 from pathlib import Path
+sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 SCRIPTS_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPTS_DIR))
@@ -78,7 +79,7 @@ async def check_and_login(downloaders: dict):
     for ch, dl in downloaders.items():
         print(f"  [{dl.channel_name}] 確認中...", end=" ", flush=True)
         ok = await dl.check_session()
-        print("✓ ログイン済み" if ok else "⚠ ログインが必要")
+        print("[OK] ログイン済み" if ok else "[要ログイン]")
         if not ok:
             needs_login.append(dl)
 
@@ -196,7 +197,7 @@ async def main():
     if not args.skip_import:
         import_phase(args.channels)
 
-    print("\n✓ 全処理完了")
+    print("\n完了")
 
 
 if __name__ == "__main__":
