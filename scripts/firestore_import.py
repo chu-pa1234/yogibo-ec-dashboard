@@ -39,6 +39,12 @@ FIELD_RENAME = {
     "売上金額": "revenue",
 }
 
+def normalize_sku(sku):
+    """PRO- で始まるSKUを PRE- に統一"""
+    if sku.upper().startswith('PRO-'):
+        return 'PRE-' + sku[4:]
+    return sku
+
 def get_auth_token():
     """Firebase 匿名認証でIDトークンを取得"""
     resp = requests.post(AUTH_URL, json={"returnSecureToken": True}, timeout=10)
@@ -59,12 +65,16 @@ def make_doc_id(row):
     return f"{row['date']}_{row['channel']}_{row['SKU']}".replace("/", "_").replace(" ", "_")
 
 def aggregate_rows(rows):
-    """同一 date+channel+SKU の行を合算してユニーク化"""
+    """SKUを正規化（PRO-→PRE-）してから同一 date+channel+SKU を合算"""
     merged = {}
     for row in rows:
+        row = dict(row)
+        row['SKU'] = normalize_sku(row.get('SKU', ''))
+        if 'sku' in row:
+            row['sku'] = normalize_sku(row.get('sku', ''))
         doc_id = make_doc_id(row)
         if doc_id not in merged:
-            merged[doc_id] = dict(row)
+            merged[doc_id] = row
         else:
             for col in INT_COLS:
                 try:
