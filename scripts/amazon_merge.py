@@ -35,7 +35,7 @@ def load_asin_mapping(xlsx_path):
         print("[警告] openpyxl が未インストールのため --mapping は無視されます（pip install openpyxl）")
         return {}
 
-    wb = openpyxl.load_workbook(xlsx_path)
+    wb = openpyxl.load_workbook(xlsx_path, data_only=True)
     ws = wb[MAPPING_SHEET]
     mapping = {}
     unmapped = []
