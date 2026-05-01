@@ -40,8 +40,9 @@ FIELD_RENAME = {
 }
 
 def normalize_sku(sku):
-    """PRO- で始まるSKUを PRE- に統一"""
-    if sku.upper().startswith('PRO-'):
+    """SKUを大文字統一 + PRO- を PRE- に統一"""
+    sku = sku.upper()
+    if sku.startswith('PRO-'):
         return 'PRE-' + sku[4:]
     return sku
 
