@@ -249,8 +249,9 @@ input[type=date]:focus,select:focus{border-color:#3b82f6}
     <div class="guide-row"><span class="guide-label">ファイル名ルール</span><span class="guide-val">日別でDL後、ファイル名はそのまま使用可（例: <code>yogibo-store-item_report_260429.csv</code>）→ <code>scripts/yahoo_merge.py</code> で結合してからインポート</span></div>
   </div>
   <div id="guide-own" class="ch-guide hidden">
-    <div class="guide-row"><span class="guide-label">取得場所</span><span class="guide-val">未設定</span></div>
-    <div class="guide-row"><span class="guide-label">ファイル名ルール</span><span class="guide-val">未設定</span></div>
+    <div class="guide-row"><span class="guide-label">取得場所</span><span class="guide-val" style="display:flex;align-items:center;gap:10px">GA4 → レポート → 収益化 → eコマースの購入（日別・アイテム名）<a href="https://analytics.google.com/analytics/web/?hl=ja#/a56611866p251080271/reports/explorer?params=_u..nav%3Dmaui&ruid=ecomm-product,life-cycle,monetization&collectionId=6391793122&r=6391835433" target="_blank" style="padding:3px 10px;background:#3b82f6;color:#fff;border-radius:3px;font-size:10px;font-weight:600;text-decoration:none;white-space:nowrap;font-family:'IBM Plex Mono',monospace">開く ↗</a></span></div>
+    <div class="guide-row"><span class="guide-label">ファイル名ルール</span><span class="guide-val">リネーム不要（例: <code>e_コマース購入数_イベント名_260421.csv</code>）</span></div>
+    <div class="guide-row"><span class="guide-label">前処理</span><span class="guide-val"><code>python scripts/own_ec_merge.py --folder &lt;フォルダ&gt; --mapping &lt;Book2.csv&gt;</code></span></div>
   </div>
 
   <input type="file" id="csv-file" accept=".csv,.tsv" style="display:none" onchange="handleFile(event)"/>
