@@ -93,6 +93,19 @@ input[type=date]:focus,select:focus{border-color:#3b82f6}
 .save-badge{font-size:9px;color:#22c55e}
 #main{padding:16px 24px}
 .hidden{display:none!important}
+#dl-view{padding:20px 24px;max-width:640px}
+.dl-server-badge{font-size:10px;padding:3px 10px;border-radius:10px;font-family:'IBM Plex Mono',monospace}
+.dl-server-badge.online{color:#22c55e;border:1px solid #22c55e40}
+.dl-server-badge.offline{color:#ef4444;border:1px solid #ef444440}
+.dl-section{background:#0d1320;border:1px solid #1e2d45;border-radius:8px;padding:16px 20px;margin-bottom:14px}
+.dl-section-title{font-size:10px;color:#334155;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;font-family:'Noto Sans JP',sans-serif}
+.dl-ch-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.dl-ch-btn{padding:6px;border-radius:6px;border:1px solid;font-size:11px;cursor:pointer;background:transparent;font-family:'Noto Sans JP',sans-serif;transition:all .15s;opacity:.4}
+.dl-ch-btn.active{opacity:1}
+.dl-log{background:#080c14;border:1px solid #1e2d45;border-radius:6px;padding:10px 14px;height:220px;overflow-y:auto;font-size:10px;font-family:'IBM Plex Mono',monospace;color:#475569;white-space:pre-wrap;line-height:1.6}
+.dl-log .ok{color:#22c55e}
+.dl-log .err{color:#ef4444}
+.dl-log .info{color:#3b82f6}
 </style>
 </head>
 <body>
@@ -106,6 +119,7 @@ input[type=date]:focus,select:focus{border-color:#3b82f6}
     <span id="save-badge" class="save-badge hidden"></span>
     <button class="pill active" onclick="switchView('dashboard')">ダッシュボード</button>
     <button class="pill" id="btn-upload" onclick="switchView('upload')">CSVインポート</button>
+    <button class="pill" id="btn-download" onclick="switchView('download')">ダウンロード</button>
   </div>
 </div>
 
@@ -273,6 +287,64 @@ input[type=date]:focus,select:focus{border-color:#3b82f6}
     💡 列名は日本語・英語どちらも自動マッピング（アクセス数 / UU / sessions など）<br/>
     💡 UU・注文件数がなくても売上・客単価は動作します<br/>
     💡 データはブラウザに自動保存。次回アクセス時に自動復元
+  </div>
+</div>
+
+<div id="dl-view" class="hidden">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div style="font-size:13px;color:#94a3b8;font-family:'Noto Sans JP',sans-serif">データダウンロード</div>
+    <span id="dl-server-badge" class="dl-server-badge offline">サーバー確認中...</span>
+  </div>
+
+  <div id="dl-offline-msg" style="background:#0d1320;border:1px solid #ef444430;border-radius:8px;padding:14px 18px;margin-bottom:14px;font-size:11px;color:#ef4444;font-family:'Noto Sans JP',sans-serif;line-height:2">
+    ローカルサーバーが起動していません。以下のコマンドで起動してください：<br/>
+    <code style="color:#a78bfa;font-family:'IBM Plex Mono',monospace">python scripts/download_server.py</code>
+  </div>
+
+  <div id="dl-online-content" class="hidden">
+    <div class="dl-section">
+      <div class="dl-section-title">チャネル</div>
+      <div class="dl-ch-grid">
+        <button class="dl-ch-btn active" id="dlch-rakuten" onclick="toggleDlCh('rakuten',this)" style="border-color:#e60027;color:#e60027">楽天</button>
+        <button class="dl-ch-btn active" id="dlch-amazon"  onclick="toggleDlCh('amazon',this)"  style="border-color:#ff9900;color:#ff9900">Amazon</button>
+        <button class="dl-ch-btn active" id="dlch-yahoo"   onclick="toggleDlCh('yahoo',this)"   style="border-color:#c0006e;color:#c0006e">Yahoo!</button>
+        <button class="dl-ch-btn active" id="dlch-own_ec"  onclick="toggleDlCh('own_ec',this)"  style="border-color:#3b82f6;color:#3b82f6">自社EC</button>
+      </div>
+      <div class="dl-section-title">期間</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="pill-gran active" id="dlp-1" onclick="setDlPeriod(1,this)">昨日</button>
+        <button class="pill-gran" id="dlp-7"  onclick="setDlPeriod(7,this)">過去7日</button>
+        <button class="pill-gran" id="dlp-30" onclick="setDlPeriod(30,this)">過去30日</button>
+        <div class="sep"></div>
+        <input type="date" id="dl-start" style="font-size:11px"/>
+        <span style="color:#334155;font-size:10px">〜</span>
+        <input type="date" id="dl-end" style="font-size:11px"/>
+      </div>
+    </div>
+
+    <div class="dl-section">
+      <div class="dl-section-title">オプション</div>
+      <div style="display:flex;gap:14px;font-size:11px;font-family:'Noto Sans JP',sans-serif;color:#475569">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="dl-skip-dl"> ダウンロードをスキップ（マージ・インポートのみ）
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="dl-skip-import"> Firestoreインポートをスキップ
+        </label>
+      </div>
+    </div>
+
+    <button id="dl-run-btn" onclick="runDownload()" style="padding:8px 24px;background:#3b82f6;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Noto Sans JP',sans-serif;margin-bottom:14px">
+      実行
+    </button>
+    <button id="dl-stop-btn" onclick="stopDownload()" class="hidden" style="padding:8px 24px;background:#ef4444;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Noto Sans JP',sans-serif;margin-left:8px;margin-bottom:14px">
+      停止
+    </button>
+
+    <div class="dl-section">
+      <div class="dl-section-title">ログ</div>
+      <div id="dl-log" class="dl-log">待機中...</div>
+    </div>
   </div>
 </div>
 
@@ -447,8 +519,104 @@ function clearSKU(){selSKU="ALL";document.getElementById("sku-sel").value="ALL";
 function switchView(v){
   document.getElementById("main").classList.toggle("hidden",v!=="dashboard");
   document.getElementById("upload-view").classList.toggle("hidden",v!=="upload");
-  document.querySelectorAll("#header .pill").forEach((b,i)=>{b.classList.toggle("active",i===(v==="dashboard"?0:1));});
+  document.getElementById("dl-view").classList.toggle("hidden",v!=="download");
+  const pills=document.querySelectorAll("#header .pill");
+  pills.forEach(b=>b.classList.remove("active"));
+  if(v==="dashboard")pills[0].classList.add("active");
+  else if(v==="upload")pills[1].classList.add("active");
+  else if(v==="download")pills[2].classList.add("active");
   if(v==="dashboard")refresh();
+  if(v==="download")initDlView();
+}
+
+// ---- ダウンロード画面 ----
+const DL_SERVER="http://localhost:8765";
+let dlChannels=["rakuten","amazon","yahoo","own_ec"];
+
+function initDlView(){
+  setDlPeriod(1,document.getElementById("dlp-1"));
+  checkDlServer();
+}
+
+async function checkDlServer(){
+  const badge=document.getElementById("dl-server-badge");
+  const offline=document.getElementById("dl-offline-msg");
+  const online=document.getElementById("dl-online-content");
+  try{
+    const r=await fetch(DL_SERVER+"/status",{signal:AbortSignal.timeout(2000)});
+    if(r.ok){
+      badge.textContent="サーバー起動中";badge.className="dl-server-badge online";
+      offline.classList.add("hidden");online.classList.remove("hidden");
+    }else throw new Error();
+  }catch{
+    badge.textContent="サーバー未起動";badge.className="dl-server-badge offline";
+    offline.classList.remove("hidden");online.classList.add("hidden");
+  }
+}
+
+function toggleDlCh(ch,btn){
+  if(dlChannels.includes(ch)){
+    if(dlChannels.length<=1)return;
+    dlChannels=dlChannels.filter(c=>c!==ch);
+    btn.classList.remove("active");
+  }else{
+    dlChannels.push(ch);
+    btn.classList.add("active");
+  }
+}
+
+function setDlPeriod(days,btn){
+  document.querySelectorAll(".pill-gran").forEach(b=>b.classList.remove("active"));
+  if(btn)btn.classList.add("active");
+  const e=new Date();e.setDate(e.getDate()-1);
+  const s=new Date(e);s.setDate(s.getDate()-(days-1));
+  document.getElementById("dl-end").value=e.toISOString().slice(0,10);
+  document.getElementById("dl-start").value=s.toISOString().slice(0,10);
+}
+
+function dlLog(text,cls=""){
+  const el=document.getElementById("dl-log");
+  const line=document.createElement("div");
+  if(cls)line.className=cls;
+  line.textContent=text;
+  el.appendChild(line);
+  el.scrollTop=el.scrollHeight;
+}
+
+async function runDownload(){
+  const params={
+    start:document.getElementById("dl-start").value,
+    end:document.getElementById("dl-end").value,
+    channels:dlChannels,
+    skip_download:document.getElementById("dl-skip-dl").checked,
+    skip_import:document.getElementById("dl-skip-import").checked,
+  };
+  document.getElementById("dl-log").innerHTML="";
+  document.getElementById("dl-run-btn").classList.add("hidden");
+  document.getElementById("dl-stop-btn").classList.remove("hidden");
+  dlLog(`開始: ${params.start} 〜 ${params.end}`,"info");
+  dlLog(`チャネル: ${params.channels.join(", ")}`,"info");
+
+  await fetch(DL_SERVER+"/download",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(params)});
+
+  const es=new EventSource(DL_SERVER+"/logs");
+  es.onmessage=e=>{
+    const d=JSON.parse(e.data);
+    if(d.type==="log")dlLog(d.text);
+    else if(d.type==="done"){dlLog(d.text,d.code===0?"ok":"err");es.close();finishDl();}
+    else if(d.type==="error"){dlLog("エラー: "+d.text,"err");es.close();finishDl();}
+  };
+}
+
+function finishDl(){
+  document.getElementById("dl-run-btn").classList.remove("hidden");
+  document.getElementById("dl-stop-btn").classList.add("hidden");
+}
+
+async function stopDownload(){
+  await fetch(DL_SERVER+"/stop",{method:"POST"});
+  dlLog("停止しました","err");
+  finishDl();
 }
 
 function setUploadCh(ch,btn){
