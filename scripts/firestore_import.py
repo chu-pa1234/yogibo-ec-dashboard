@@ -30,6 +30,15 @@ AUTH_URL = f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={API_
 
 INT_COLS = {"UU", "注文件数", "販売数量", "売上金額"}
 
+FIELD_RENAME = {
+    "SKU":    "sku",
+    "商品名": "name",
+    "UU":     "uu",
+    "注文件数": "orders",
+    "販売数量": "units",
+    "売上金額": "revenue",
+}
+
 def get_auth_token():
     """Firebase 匿名認証でIDトークンを取得"""
     resp = requests.post(AUTH_URL, json={"returnSecureToken": True}, timeout=10)
@@ -64,14 +73,18 @@ def aggregate_rows(rows):
                     pass
     return merged
 
-def batch_write(writes, token):
-    url = f"{BASE_URL}:batchWrite?key={API_KEY}"
+def write_doc(doc_id, fields, token, retries=3):
+    url = f"{BASE_URL}/{COLLECTION}/{doc_id}"
     headers = {"Authorization": f"Bearer {token}"}
-    resp = requests.post(url, json={"writes": writes}, headers=headers, timeout=30)
-    if resp.status_code not in (200, 201):
-        print(f"  [エラー] {resp.status_code}: {resp.text[:200]}")
-        return False
-    return True
+    for attempt in range(retries):
+        try:
+            resp = requests.patch(url, json={"fields": fields}, headers=headers, timeout=15)
+            return resp.status_code in (200, 201)
+        except requests.exceptions.ConnectionError:
+            if attempt < retries - 1:
+                time.sleep(2 ** attempt)
+            else:
+                return False
 
 def import_csv(path, token):
     with open(path, encoding="utf-8-sig") as f:
@@ -84,30 +97,19 @@ def import_csv(path, token):
     deduped = aggregate_rows(rows)
     print(f"  {len(rows)}行 → 重複合算後 {len(deduped)}件")
 
-    writes = []
     success = 0
+    errors  = 0
+    for i, (doc_id, row) in enumerate(deduped.items(), 1):
+        fields = {FIELD_RENAME.get(k, k): to_firestore_value(k, v) for k, v in row.items()}
+        if write_doc(doc_id, fields, token):
+            success += 1
+        else:
+            errors += 1
+        if i % 100 == 0:
+            print(f"    {i}/{len(deduped)}件...")
+        time.sleep(0.02)
 
-    for doc_id, row in deduped.items():
-        fields = {k: to_firestore_value(k, v) for k, v in row.items()}
-        writes.append({
-            "update": {
-                "name": f"{DOC_PATH}/{doc_id}",
-                "fields": fields
-            }
-        })
-
-        if len(writes) >= BATCH_SIZE:
-            if batch_write(writes, token):
-                success += len(writes)
-                print(f"    {success}/{len(deduped)}件...")
-            writes = []
-            time.sleep(0.2)
-
-    if writes:
-        if batch_write(writes, token):
-            success += len(writes)
-
-    print(f"  完了: {success}/{len(deduped)}件 → Firestore")
+    print(f"  完了: {success}件成功 / {errors}件失敗 → Firestore")
 
 def main():
     parser = argparse.ArgumentParser()
