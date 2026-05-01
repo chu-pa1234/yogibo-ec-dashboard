@@ -6,6 +6,7 @@
 <title>Yogibo EC Analytics</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet"/>
 <style>
@@ -276,6 +277,8 @@ input[type=date]:focus,select:focus{border-color:#3b82f6}
 <script>
 firebase.initializeApp({apiKey:"AIzaSyBDnQEypk4i7QU15qKbR1AGKAHZ0qkMgK0",authDomain:"yogibo-ecmall-dashboad-f1610.firebaseapp.com",projectId:"yogibo-ecmall-dashboad-f1610",storageBucket:"yogibo-ecmall-dashboad-f1610.firebasestorage.app",messagingSenderId:"863932359753",appId:"1:863932359753:web:832839fbc5de48ef574b98"});
 const db=firebase.firestore();
+const auth=firebase.auth();
+firebase.auth().signInAnonymously().catch(e=>console.error("auth error",e));
 const CHANNELS=[{id:"rakuten",label:"楽天",color:"#e60027"},{id:"amazon",label:"Amazon",color:"#ff9900"},{id:"yahoo",label:"Yahoo!",color:"#c0006e"},{id:"own",label:"自社EC",color:"#3b82f6"}];
 const METRICS={uu:{label:"UU",color:"#3b82f6",fmt:v=>v>=1000?`${(v/1000).toFixed(1)}K`:String(Math.round(v))},cvr:{label:"CVR",color:"#22c55e",fmt:v=>`${v.toFixed(2)}%`},aov:{label:"客単価",color:"#a78bfa",fmt:v=>`¥${Math.round(v).toLocaleString()}`},revenue:{label:"売上",color:"#f97316",fmt:v=>v>=1e6?`¥${(v/1e6).toFixed(1)}M`:v>=1000?`¥${(v/1000).toFixed(0)}K`:`¥${v}`}};
 const AUTO_DETECT={date:["日付","date","注文日","受注日","購入日","order_date","集計日"],sku:["SKU","sku","商品番号","item_id","ASIN","管理番号","商品コード"],revenue:["売上金額","revenue","売上","金額","sales","ordered_product_sales","税抜売上","売上高","注文商品の売上額","売上合計値（税込）"],units:["販売数量","units","数量","個数","quantity","units_ordered","注文された商品点数"],orders:["注文件数","orders","受注件数","order_count","注文数","受注数","件数","transactions","注文品目総数","注文数合計"],uu:["UU","uu","アクセス数","セッション数","sessions","visitors","PV","訪問者数"],product_name:["商品名","product_name","item_name","商品タイトル","title"]};
@@ -491,17 +494,20 @@ async function applyMapping(){
   finally{btn.textContent="データを適用・保存";btn.disabled=false;}
 }
 
-window.addEventListener("load",async()=>{
-  const{s,e}=getDR();
+window.addEventListener("load",()=>{
   const badge=document.getElementById("save-badge");
   badge.textContent="読み込み中...";badge.classList.remove("hidden");
-  try{
-    const data=await loadFromFirestore(s,e);
-    if(data.length>0){allData=data;isSample=false;loadedRange={s:pyShift(s,false),e};document.getElementById("sample-badge").classList.add("hidden");}
-    else{allData=genSample();}
-  }catch(err){console.error(err);allData=genSample();}
-  badge.classList.add("hidden");
-  setTab("trend");refresh();
+  auth.onAuthStateChanged(async user=>{
+    if(!user)return;
+    const{s,e}=getDR();
+    try{
+      const data=await loadFromFirestore(s,e);
+      if(data.length>0){allData=data;isSample=false;loadedRange={s:pyShift(s,false),e};document.getElementById("sample-badge").classList.add("hidden");}
+      else{allData=genSample();}
+    }catch(err){console.error(err);allData=genSample();}
+    badge.classList.add("hidden");
+    setTab("trend");refresh();
+  });
 });
 </script>
 </body>
