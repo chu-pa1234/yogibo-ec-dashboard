@@ -83,6 +83,19 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"running": _running, "pid": os.getpid()})
         elif self.path == "/logs":
             self._sse()
+        elif self.path in ("/", "/index.html"):
+            # ローカルのindex.htmlを配信（HTTPSブロック回避）
+            html_path = Path(__file__).parent.parent / "index.html"
+            if html_path.exists():
+                content = html_path.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", len(content))
+                self.end_headers()
+                self.wfile.write(content)
+            else:
+                self.send_response(404)
+                self.end_headers()
         else:
             self.send_response(404)
             self.end_headers()
@@ -141,9 +154,10 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     server = HTTPServer(("localhost", PORT), Handler)
-    print(f"ダウンロードサーバー起動: http://localhost:{PORT}")
-    print("ダッシュボードの「ダウンロード」ボタンから操作できます")
-    print("停止: Ctrl+C\n")
+    print(f"ダウンロードサーバー起動完了")
+    print(f"  ブラウザで開く: http://localhost:{PORT}")
+    print(f"  （ダッシュボードが開きます）")
+    print(f"停止: Ctrl+C\n")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
