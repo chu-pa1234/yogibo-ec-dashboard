@@ -69,6 +69,17 @@ MERGED_FILES = {
 }
 
 
+async def login_only_phase(downloaders: dict):
+    """ログイン確認モード: headlessチェックをスキップして即Chromeを表示する"""
+    print("=" * 50)
+    print("ログイン確認（手動）")
+    print("=" * 50)
+    for dl in downloaders.values():
+        print(f"\n[{dl.channel_name}] ブラウザを開きます...")
+        await dl.do_login()
+        print(f"[{dl.channel_name}] ログイン確認完了")
+
+
 async def check_and_login(downloaders: dict):
     """全チャネルのセッションを確認し、必要なものをまとめてログインさせる"""
     print("=" * 50)
@@ -185,9 +196,9 @@ async def main():
     }
     downloaders = {ch: all_downloaders[ch] for ch in args.channels}
 
-    # ログイン確認のみモード
+    # ログイン確認のみモード（セッションチェックをスキップして即Chromeを開く）
     if args.login_only:
-        await check_and_login(downloaders)
+        await login_only_phase(downloaders)
         print("\nログイン確認完了")
         return
 
