@@ -334,6 +334,16 @@ input[type=date]:focus,select:focus{border-color:#3b82f6}
       </div>
     </div>
 
+    <div class="dl-section" style="margin-bottom:14px">
+      <div class="dl-section-title">ログイン確認</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <button id="dl-login-btn" onclick="runLogin()" style="padding:8px 20px;background:#0f172a;color:#a78bfa;border:1px solid #a78bfa;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Noto Sans JP',sans-serif">
+          ログイン確認
+        </button>
+        <span id="dl-login-status" style="font-size:11px;color:#475569;font-family:'Noto Sans JP',sans-serif"></span>
+      </div>
+    </div>
+
     <button id="dl-run-btn" onclick="runDownload()" style="padding:8px 24px;background:#3b82f6;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Noto Sans JP',sans-serif;margin-bottom:14px">
       実行
     </button>
@@ -581,6 +591,30 @@ function dlLog(text,cls=""){
   line.textContent=text;
   el.appendChild(line);
   el.scrollTop=el.scrollHeight;
+}
+
+async function runLogin(){
+  const btn=document.getElementById("dl-login-btn");
+  const status=document.getElementById("dl-login-status");
+  btn.disabled=true;btn.textContent="確認中...";
+  status.textContent="";
+  document.getElementById("dl-log").innerHTML="";
+  await fetch(DL_SERVER+"/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({channels:dlChannels})});
+  const es=new EventSource(DL_SERVER+"/logs");
+  es.onmessage=e=>{
+    const d=JSON.parse(e.data);
+    if(d.type==="log")dlLog(d.text);
+    else if(d.type==="done"){
+      dlLog(d.text,d.code===0?"ok":"err");
+      status.textContent=d.code===0?"✓ ログイン済み":"✗ ログインが必要です";
+      status.style.color=d.code===0?"#22c55e":"#ef4444";
+      es.close();btn.disabled=false;btn.textContent="ログイン確認";
+    }else if(d.type==="error"){
+      dlLog("エラー: "+d.text,"err");
+      status.textContent="✗ エラー";status.style.color="#ef4444";
+      es.close();btn.disabled=false;btn.textContent="ログイン確認";
+    }
+  };
 }
 
 async function runDownload(){

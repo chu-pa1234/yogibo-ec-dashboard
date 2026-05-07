@@ -12,6 +12,7 @@ sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 SESSION_BASE = Path(__file__).parent.parent / "sessions"
 
+
 class BaseDownloader:
     channel_id: str       # 'amazon' | 'yahoo' | 'rakuten' | 'own_ec'
     channel_name: str     # 表示名
@@ -42,6 +43,7 @@ class BaseDownloader:
             await self._context.close()
         if hasattr(self, '_pw'):
             await self._pw.stop()
+        self._context = None
 
     async def check_session(self) -> bool:
         """セッションが有効かチェック。True=ログイン済み"""
@@ -51,6 +53,7 @@ class BaseDownloader:
             await page.goto(self.check_url, wait_until="domcontentloaded", timeout=30_000)
             await page.wait_for_timeout(3_000)
             is_logged_in = self.check_success in page.url
+            await page.close()
             await self.close()
             return is_logged_in
         except Exception:
@@ -58,14 +61,19 @@ class BaseDownloader:
             return False
 
     async def do_login(self):
-        """ブラウザを開いてユーザーにログインを促す"""
+        """Chromeを開いてユーザーに手動ログインを促す。
+        check_url を開くことでロボット対策ページへリダイレクトされ、
+        ログイン後に check_success を含む URL へ戻ってくる。"""
         ctx = await self._launch(headless=False)
         page = await ctx.new_page()
-        await page.goto(self.login_url, wait_until="domcontentloaded", timeout=30_000)
-        print(f"  [{self.channel_name}] ブラウザでログインしてください")
-        print(f"  ログイン完了後 Enter を押してください...", end="", flush=True)
-        await asyncio.get_event_loop().run_in_executor(None, input)
-        # セッションを保存して閉じる
+        await page.goto(self.check_url, wait_until="domcontentloaded", timeout=30_000)
+        print(f"  [{self.channel_name}] ブラウザでログインしてください（手動）")
+        print(f"  ログインが完了すると自動的に続行します（最大5分）...", flush=True)
+        # ログイン後のリダイレクト先（check_success）を検出するまで待機
+        for _ in range(100):
+            await asyncio.sleep(3)
+            if self.check_success in page.url:
+                break
         await self._context.close()
         await self._pw.stop()
         self._context = None

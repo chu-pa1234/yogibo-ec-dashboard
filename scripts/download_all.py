@@ -156,6 +156,8 @@ async def main():
     parser.add_argument("--end",   default=None)
     parser.add_argument("--skip-download", action="store_true")
     parser.add_argument("--skip-import",   action="store_true")
+    parser.add_argument("--login-only",    action="store_true",
+                        help="セッション確認とログインのみ実行（ダウンロード・インポートはスキップ）")
     parser.add_argument("--channels", nargs="+",
                         default=["amazon", "yahoo", "rakuten", "own_ec"],
                         choices=["amazon", "yahoo", "rakuten", "own_ec"])
@@ -182,6 +184,12 @@ async def main():
         "own_ec":  OwnEcDownloader(),
     }
     downloaders = {ch: all_downloaders[ch] for ch in args.channels}
+
+    # ログイン確認のみモード
+    if args.login_only:
+        await check_and_login(downloaders)
+        print("\nログイン確認完了")
+        return
 
     # ① セッション確認 + ログイン
     if not args.skip_download:

@@ -14,7 +14,7 @@ import threading
 import os
 import json
 import queue
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -39,6 +39,8 @@ def run_download(params: dict):
         cmd += ["--days", str(params["days"])]
     if params.get("channels"):
         cmd += ["--channels"] + params["channels"]
+    if params.get("login_only"):
+        cmd += ["--login-only"]
     if params.get("skip_download"):
         cmd += ["--skip-download"]
     if params.get("skip_import"):
@@ -49,6 +51,7 @@ def run_download(params: dict):
     try:
         _process = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            stdin=subprocess.DEVNULL,
             text=True, encoding="utf-8", errors="replace",
             cwd=str(SCRIPTS_DIR.parent)
         )
@@ -101,7 +104,18 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def do_POST(self):
-        if self.path == "/download":
+        if self.path == "/login":
+            if _running:
+                self._json({"error": "既に実行中です"}, 409)
+                return
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length)
+            params = json.loads(body) if body else {}
+            params["login_only"] = True
+            t = threading.Thread(target=run_download, args=(params,), daemon=True)
+            t.start()
+            self._json({"status": "started"})
+        elif self.path == "/download":
             if _running:
                 self._json({"error": "既に実行中です"}, 409)
                 return
@@ -153,7 +167,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    server = HTTPServer(("localhost", PORT), Handler)
+    server = ThreadingHTTPServer(("localhost", PORT), Handler)
     print(f"ダウンロードサーバー起動完了")
     print(f"  ブラウザで開く: http://localhost:{PORT}")
     print(f"  （ダッシュボードが開きます）")
