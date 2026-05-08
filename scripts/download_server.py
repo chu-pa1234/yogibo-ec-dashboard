@@ -1,11 +1,5 @@
 """
 ダッシュボードからダウンロードスクリプトを起動するローカルサーバー
-
-起動方法:
-  python scripts/download_server.py
-
-起動後はブラウザから http://localhost:8765 でアクセス可能
-ダッシュボードの「ダウンロード」ボタンがこのサーバーを呼び出します
 """
 
 import subprocess
@@ -13,24 +7,32 @@ import sys
 import threading
 import os
 import json
-import queue
+import time
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
-from datetime import date, timedelta
 from pathlib import Path
 
 PORT = 8765
 SCRIPTS_DIR = Path(__file__).parent
 
-# 実行中のプロセスとログキュー
+# イベントリスト方式（全SSE接続が同じイベントを受け取れる）
+_events: list = []
+_events_cond = threading.Condition()
 _process = None
-_log_queue = queue.Queue()
-_running   = False
+_running = False
+
+
+def _emit(item: dict):
+    """イベントをリストに追加し、全SSE接続に通知する"""
+    with _events_cond:
+        _events.append(item)
+        _events_cond.notify_all()
 
 
 def run_download(params: dict):
     global _process, _running
     _running = True
-    _log_queue.put({"type": "start", "params": params})
+    with _events_cond:
+        _events.clear()
 
     cmd = [sys.executable, str(SCRIPTS_DIR / "download_all.py")]
     if params.get("start") and params.get("end"):
@@ -46,7 +48,7 @@ def run_download(params: dict):
     if params.get("skip_import"):
         cmd += ["--skip-import"]
 
-    _log_queue.put({"type": "log", "text": f"実行: {' '.join(cmd)}"})
+    _emit({"type": "log", "text": f"実行: {' '.join(cmd)}"})
 
     try:
         _process = subprocess.Popen(
@@ -56,20 +58,20 @@ def run_download(params: dict):
             cwd=str(SCRIPTS_DIR.parent)
         )
         for line in _process.stdout:
-            _log_queue.put({"type": "log", "text": line.rstrip()})
+            _emit({"type": "log", "text": line.rstrip()})
         _process.wait()
         code = _process.returncode
-        _log_queue.put({"type": "done", "code": code,
-                        "text": "✓ 完了" if code == 0 else f"✗ エラー (code={code})"})
+        _emit({"type": "done", "code": code,
+               "text": "✓ 完了" if code == 0 else f"✗ エラー (code={code})"})
     except Exception as e:
-        _log_queue.put({"type": "error", "text": str(e)})
+        _emit({"type": "error", "text": str(e)})
     finally:
         _running = False
         _process = None
 
 
 class Handler(BaseHTTPRequestHandler):
-    def log_message(self, *args): pass  # アクセスログを抑制
+    def log_message(self, *args): pass
 
     def _cors(self):
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -87,7 +89,6 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/logs":
             self._sse()
         elif self.path in ("/", "/index.html"):
-            # ローカルのindex.htmlを配信（HTTPSブロック回避）
             html_path = Path(__file__).parent.parent / "index.html"
             if html_path.exists():
                 content = html_path.read_bytes()
@@ -104,30 +105,22 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def do_POST(self):
-        if self.path == "/login":
+        if self.path in ("/login", "/download"):
             if _running:
                 self._json({"error": "既に実行中です"}, 409)
                 return
             length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(length)
             params = json.loads(body) if body else {}
-            params["login_only"] = True
-            t = threading.Thread(target=run_download, args=(params,), daemon=True)
-            t.start()
-            self._json({"status": "started"})
-        elif self.path == "/download":
-            if _running:
-                self._json({"error": "既に実行中です"}, 409)
-                return
-            length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(length)
-            params = json.loads(body) if body else {}
+            if self.path == "/login":
+                params["login_only"] = True
             t = threading.Thread(target=run_download, args=(params,), daemon=True)
             t.start()
             self._json({"status": "started"})
         elif self.path == "/stop":
             if _process:
                 _process.terminate()
+                _emit({"type": "done", "code": -1, "text": "⏹ 停止しました"})
                 self._json({"status": "stopped"})
             else:
                 self._json({"status": "not running"})
@@ -150,27 +143,36 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-cache")
         self.end_headers()
-        # キューを5秒間ポーリング
-        import time
-        end = time.time() + 300
-        while time.time() < end:
+
+        pos = 0
+        deadline = time.time() + 300
+        while time.time() < deadline:
+            item = None
+            with _events_cond:
+                if pos < len(_events):
+                    item = _events[pos]
+                    pos += 1
+                else:
+                    _events_cond.wait(timeout=0.5)
+
             try:
-                item = _log_queue.get(timeout=0.5)
-                data = json.dumps(item, ensure_ascii=False)
-                self.wfile.write(f"data: {data}\n\n".encode())
+                if item is not None:
+                    data = json.dumps(item, ensure_ascii=False)
+                    self.wfile.write(f"data: {data}\n\n".encode())
+                else:
+                    self.wfile.write(b": ping\n\n")
                 self.wfile.flush()
-                if item.get("type") in ("done", "error"):
-                    break
-            except queue.Empty:
-                self.wfile.write(b": ping\n\n")
-                self.wfile.flush()
+            except OSError:
+                break
+
+            if item is not None and item.get("type") in ("done", "error"):
+                break
 
 
 if __name__ == "__main__":
     server = ThreadingHTTPServer(("localhost", PORT), Handler)
     print(f"ダウンロードサーバー起動完了")
     print(f"  ブラウザで開く: http://localhost:{PORT}")
-    print(f"  （ダッシュボードが開きます）")
     print(f"停止: Ctrl+C\n")
     try:
         server.serve_forever()
