@@ -48,7 +48,7 @@ class BaseDownloader:
     async def check_session(self) -> bool:
         """セッションが有効かチェック。True=ログイン済み"""
         try:
-            ctx = await self._launch(headless=True)
+            ctx = await self._launch(headless=False)
             page = await ctx.new_page()
             await page.goto(self.check_url, wait_until="domcontentloaded", timeout=30_000)
             await page.wait_for_timeout(3_000)
