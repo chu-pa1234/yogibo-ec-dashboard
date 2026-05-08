@@ -64,19 +64,21 @@ class BaseDownloader:
         """Chromeを開いてユーザーに手動ログインを促す。
         check_url を開くことでロボット対策ページへリダイレクトされ、
         ログイン後に check_success を含む URL へ戻ってくる。"""
-        ctx = await self._launch(headless=False)
-        page = await ctx.new_page()
-        await page.goto(self.check_url, wait_until="domcontentloaded", timeout=30_000)
-        print(f"  [{self.channel_name}] ブラウザでログインしてください（手動）")
-        print(f"  ログインが完了すると自動的に続行します（最大5分）...", flush=True)
-        # ログイン後のリダイレクト先（check_success）を検出するまで待機
-        for _ in range(100):
-            await asyncio.sleep(3)
-            if self.check_success in page.url:
-                break
-        await self._context.close()
-        await self._pw.stop()
-        self._context = None
+        try:
+            ctx = await self._launch(headless=False)
+            page = await ctx.new_page()
+            await page.goto(self.check_url, wait_until="domcontentloaded", timeout=30_000)
+            print(f"  [{self.channel_name}] ブラウザでログインしてください（手動）")
+            print(f"  ログインが完了すると自動的に続行します（最大5分）...", flush=True)
+            for _ in range(100):
+                await asyncio.sleep(3)
+                if self.check_success in page.url:
+                    print(f"  [{self.channel_name}] ログイン検出", flush=True)
+                    break
+        except Exception as e:
+            print(f"  [{self.channel_name}] ブラウザ起動エラー: {e}", flush=True)
+        finally:
+            await self.close()
 
     async def download(self, start_date: str, end_date: str, out_dir: str) -> list[str]:
         """

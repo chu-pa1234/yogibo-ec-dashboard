@@ -84,18 +84,25 @@ def aggregate_rows(rows):
                     pass
     return merged
 
-def write_doc(doc_id, fields, token, retries=3):
+def write_doc(doc_id, fields, token, retries=5):
     url = f"{BASE_URL}/{COLLECTION}/{doc_id}"
     headers = {"Authorization": f"Bearer {token}"}
     for attempt in range(retries):
         try:
-            resp = requests.patch(url, json={"fields": fields}, headers=headers, timeout=15)
-            return resp.status_code in (200, 201)
-        except requests.exceptions.ConnectionError:
+            resp = requests.patch(url, json={"fields": fields}, headers=headers, timeout=20)
+            if resp.status_code in (200, 201):
+                return True
+            if resp.status_code == 429 or resp.status_code >= 500:
+                # レート制限・サーバーエラーはリトライ
+                time.sleep(2 ** attempt)
+                continue
+            return False  # 400番台などはリトライ不要
+        except requests.exceptions.RequestException:
             if attempt < retries - 1:
                 time.sleep(2 ** attempt)
             else:
                 return False
+    return False
 
 def import_csv(path, token):
     with open(path, encoding="utf-8-sig") as f:
@@ -118,7 +125,7 @@ def import_csv(path, token):
             errors += 1
         if i % 100 == 0:
             print(f"    {i}/{len(deduped)}件...")
-        time.sleep(0.02)
+        time.sleep(0.1)  # レート制限対策（10件/秒）
 
     print(f"  完了: {success}件成功 / {errors}件失敗 → Firestore")
 

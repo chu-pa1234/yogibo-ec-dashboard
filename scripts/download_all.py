@@ -76,8 +76,11 @@ async def login_only_phase(downloaders: dict):
     print("=" * 50)
     for dl in downloaders.values():
         print(f"\n[{dl.channel_name}] ブラウザを開きます...")
-        await dl.do_login()
-        print(f"[{dl.channel_name}] ログイン確認完了")
+        try:
+            await dl.do_login()
+            print(f"[{dl.channel_name}] ログイン確認完了")
+        except Exception as e:
+            print(f"[{dl.channel_name}] エラー: {e}")
 
 
 async def check_and_login(downloaders: dict):
