@@ -97,6 +97,13 @@ input[type=date]:focus,select:focus{border-color:#3b82f6}
 .dl-server-badge{font-size:10px;padding:3px 10px;border-radius:10px;font-family:'IBM Plex Mono',monospace}
 .dl-server-badge.online{color:#22c55e;border:1px solid #22c55e40}
 .dl-server-badge.offline{color:#ef4444;border:1px solid #ef444440}
+.srv-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.srv-track{width:40px;height:22px;border-radius:11px;background:#1a1a2e;border:1px solid #3a3a5c;position:relative;transition:all .25s}
+.srv-track.on{background:#14532d;border-color:#22c55e80}
+.srv-thumb{width:16px;height:16px;border-radius:50%;background:#4a4a6a;position:absolute;top:2px;left:2px;transition:all .25s}
+.srv-track.on .srv-thumb{background:#22c55e;left:20px;box-shadow:0 0 6px #22c55e80}
+.srv-label{font-size:11px;font-family:'IBM Plex Mono',monospace;color:#ef4444;min-width:56px}
+.srv-label.on{color:#22c55e}
 .dl-section{background:#0d1320;border:1px solid #1e2d45;border-radius:8px;padding:16px 20px;margin-bottom:14px}
 .dl-section-title{font-size:10px;color:#334155;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;font-family:'Noto Sans JP',sans-serif}
 .dl-ch-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
@@ -293,16 +300,15 @@ input[type=date]:focus,select:focus{border-color:#3b82f6}
 <div id="dl-view" class="hidden">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
     <div style="font-size:13px;color:#94a3b8;font-family:'Noto Sans JP',sans-serif">データダウンロード</div>
-    <span id="dl-server-badge" class="dl-server-badge offline">サーバー確認中...</span>
+    <div class="srv-toggle" id="server-toggle" onclick="handleServerToggle()" title="クリックして起動 / 停止">
+      <div class="srv-track" id="srv-track"><div class="srv-thumb"></div></div>
+      <span class="srv-label" id="srv-label">確認中...</span>
+    </div>
   </div>
 
-  <div id="dl-offline-msg" style="background:#0d1320;border:1px solid #ef444430;border-radius:8px;padding:14px 18px;margin-bottom:14px;font-size:11px;color:#ef4444;font-family:'Noto Sans JP',sans-serif;line-height:2">
-    ローカルサーバーが起動していません。<br/>
-    <span style="color:#94a3b8">初回：下のボタンで <code style="color:#a78bfa;font-family:'IBM Plex Mono',monospace">setup.bat</code> をダウンロードしてダブルクリック（クローン＆起動を自動実行）<br/>
-    2回目以降：クローン先の <code style="color:#a78bfa;font-family:'IBM Plex Mono',monospace">start_server.bat</code> をダブルクリック</span>
-    <div style="margin-top:10px">
-      <button id="dl-setup-btn" onclick="downloadSetupBat()" style="padding:6px 14px;background:#1e1b4b;border:1px solid #a78bfa;border-radius:6px;color:#a78bfa;font-size:11px;cursor:pointer;font-family:'Noto Sans JP',sans-serif">⬇ setup.bat をダウンロード</button>
-    </div>
+  <div id="dl-offline-msg" style="background:#0d1320;border:1px solid #ef444430;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:11px;color:#94a3b8;font-family:'Noto Sans JP',sans-serif;display:flex;align-items:center;justify-content:space-between;gap:12px">
+    <span>ローカルサーバーが未起動です。トグルをクリックするか <code style="color:#a78bfa;font-family:'IBM Plex Mono',monospace">start_server.bat</code> を実行してください。</span>
+    <button id="dl-setup-btn" onclick="event.stopPropagation();downloadSetupBat()" style="flex-shrink:0;padding:5px 12px;background:#1e1b4b;border:1px solid #a78bfa;border-radius:6px;color:#a78bfa;font-size:11px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;white-space:nowrap">⬇ 初回セットアップ</button>
   </div>
 
   <div id="dl-online-content" class="hidden">
@@ -563,18 +569,31 @@ function initDlView(){
 }
 
 async function checkDlServer(){
-  const badge=document.getElementById("dl-server-badge");
+  const track=document.getElementById("srv-track");
+  const label=document.getElementById("srv-label");
   const offline=document.getElementById("dl-offline-msg");
   const online=document.getElementById("dl-online-content");
   try{
     const r=await fetch(DL_SERVER+"/status",{signal:AbortSignal.timeout(2000)});
     if(r.ok){
-      badge.textContent="サーバー起動中";badge.className="dl-server-badge online";
+      track.classList.add("on");label.textContent="起動中";label.className="srv-label on";
       offline.classList.add("hidden");online.classList.remove("hidden");
     }else throw new Error();
   }catch{
-    badge.textContent="サーバー未起動";badge.className="dl-server-badge offline";
+    track.classList.remove("on");label.textContent="未起動";label.className="srv-label";
     offline.classList.remove("hidden");online.classList.add("hidden");
+  }
+}
+
+async function handleServerToggle(){
+  const isOn=document.getElementById("srv-track").classList.contains("on");
+  if(isOn){
+    try{
+      await fetch(DL_SERVER+"/stop",{method:"POST"});
+      setTimeout(checkDlServer,500);
+    }catch{}
+  }else{
+    downloadSetupBat();
   }
 }
 
