@@ -170,10 +170,13 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    import webbrowser
     server = ThreadingHTTPServer(("localhost", PORT), Handler)
     print(f"ダウンロードサーバー起動完了")
     print(f"  ブラウザで開く: http://localhost:{PORT}")
     print(f"停止: Ctrl+C\n")
+    # バインド完了後にブラウザを開く（0.5秒後）
+    threading.Timer(0.5, lambda: webbrowser.open(f"http://localhost:{PORT}")).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
