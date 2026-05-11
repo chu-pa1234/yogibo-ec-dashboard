@@ -14,6 +14,15 @@ class OwnEcDownloader(BaseDownloader):
 
     PROP = "a56611866p251080271"
 
+    def __init__(self):
+        super().__init__()
+        try:
+            from user_config import OWN_EC_SESSION_DIR
+            if OWN_EC_SESSION_DIR:
+                self.session_dir = OWN_EC_SESSION_DIR
+        except (ImportError, AttributeError):
+            pass
+
     async def download(self, start_date: str, end_date: str, out_dir: str) -> list[str]:
         s = datetime.strptime(start_date, "%Y-%m-%d").date()
         e = datetime.strptime(end_date,   "%Y-%m-%d").date()
