@@ -548,7 +548,7 @@ async function downloadSetupBat(){
   const btn=document.getElementById("dl-setup-btn");
   btn.disabled=true;btn.textContent="取得中...";
   try{
-    const res=await fetch(SETUP_BAT_URL);
+    const res=await fetch(SETUP_BAT_URL+"?v="+Date.now());
     const text=await res.text();
     const blob=new Blob([text],{type:"application/octet-stream"});
     const url=URL.createObjectURL(blob);
