@@ -8,7 +8,6 @@ echo.
 :: リポジトリ内から起動された場合は直接サーバー起動
 if exist "%~dp0scripts\download_server.py" (
     echo サーバーを起動します...
-    start "" "http://localhost:8765"
     python "%~dp0scripts\download_server.py"
     goto :end
 )
@@ -37,7 +36,6 @@ if %ERRORLEVEL% neq 0 (
 
 echo.
 echo 完了！サーバーを起動します...
-start "" "http://localhost:8765"
 python "%DEST%\scripts\download_server.py"
 
 :end
