@@ -407,7 +407,7 @@ function pyShift(p,fwd){return p.replace(/^\d{4}/,y=>String(parseInt(y)+(fwd?1:-
 function pct(a,b){return b===0?null:((a-b)/b*100).toFixed(1);}
 function calcM(rows){const rev=rows.reduce((s,d)=>s+d.revenue,0),uu=rows.reduce((s,d)=>s+d.uu,0),ord=rows.reduce((s,d)=>s+d.orders,0);return{rev,uu,ord,cvr:uu>0?ord/uu*100:0,aov:ord>0?rev/ord:0};}
 function gv(m,k){return k==="uu"?m.uu:k==="cvr"?m.cvr:k==="aov"?m.aov:m.rev;}
-function fRows(s,e){return allData.filter(d=>{const dt=d.date.slice(0,10);return selCh.includes(d.channel)&&dt>=s&&dt<=e&&(selSKU==="ALL"||d.sku===selSKU);});}
+function fRows(s,e){return allData.filter(d=>{const dt=d.date.slice(0,10);return selCh.includes(d.channel)&&dt>=s&&dt<=e&&(selSKU==="ALL"||(d.sku||"").toUpperCase()===selSKU);});}
 function getDR(){return{s:document.getElementById("dt-start").value,e:document.getElementById("dt-end").value};}
 
 function buildTrend(cy,py){
@@ -474,14 +474,14 @@ function drawSKU(cy){
   if(selSKU==="ALL"){document.getElementById("sku-select-msg").classList.remove("hidden");document.getElementById("sku-chart-wrap").classList.add("hidden");if(charts["sku-chart"]){charts["sku-chart"].destroy();}return;}
   document.getElementById("sku-select-msg").classList.add("hidden");document.getElementById("sku-chart-wrap").classList.remove("hidden");
   const m=METRICS[activeMetric];document.getElementById("sku-chart-title").textContent=selSKU+" — "+m.label;document.getElementById("sku-chart-title").style.color=m.color;
-  const map={};cy.filter(d=>d.sku===selSKU).forEach(d=>{const p=toP(d.date);if(!map[p])map[p]={};if(!map[p][d.channel])map[p][d.channel]={rev:0,uu:0,ord:0};map[p][d.channel].rev+=d.revenue;map[p][d.channel].uu+=d.uu;map[p][d.channel].ord+=d.orders;});
+  const map={};cy.filter(d=>(d.sku||"").toUpperCase()===selSKU).forEach(d=>{const p=toP(d.date);if(!map[p])map[p]={};if(!map[p][d.channel])map[p][d.channel]={rev:0,uu:0,ord:0};map[p][d.channel].rev+=d.revenue;map[p][d.channel].uu+=d.uu;map[p][d.channel].ord+=d.orders;});
   const labels=Object.keys(map).sort();
   const ds=CHANNELS.filter(c=>selCh.includes(c.id)).map(ch=>({label:ch.label,borderColor:ch.color,borderWidth:2,pointRadius:0,tension:.3,fill:false,data:labels.map(p=>{const v=map[p]?.[ch.id];if(!v)return 0;return activeMetric==="uu"?v.uu:activeMetric==="cvr"?v.ord/Math.max(v.uu,1)*100:activeMetric==="aov"?v.rev/Math.max(v.ord,1):v.rev;})}));
   mkChart("sku-chart",{type:"line",data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:"bottom",labels:{color:"#94a3b8",boxWidth:12,font:{size:10}}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${m.fmt(c.parsed.y)}`},backgroundColor:"#080c14",borderColor:"#1e2d45",borderWidth:1,titleColor:"#475569",bodyColor:"#e2e8f0",padding:8}},scales:{x:{grid:{color:GC},ticks:{...TK,maxTicksLimit:12}},y:{grid:{color:GC},ticks:{...TK,callback:v=>m.fmt(v).replace(/¥/,"")}}}}});
 }
 
 function updateTable(cy){
-  const map={};cy.forEach(d=>{if(!map[d.sku])map[d.sku]={sku:d.sku,name:d.name||"",revenue:0,uu:0,orders:0,units:0};map[d.sku].revenue+=d.revenue;map[d.sku].uu+=d.uu;map[d.sku].orders+=d.orders;map[d.sku].units+=d.units;});
+  const map={};cy.forEach(d=>{const _s=(d.sku||"").toUpperCase();if(!map[_s])map[_s]={sku:_s,name:d.name||"",revenue:0,uu:0,orders:0,units:0};map[_s].revenue+=d.revenue;map[_s].uu+=d.uu;map[_s].orders+=d.orders;map[_s].units+=d.units;});
   const tot=Object.values(map).reduce((s,r)=>s+r.revenue,0);
   const ranked=Object.values(map).sort((a,b)=>b.revenue-a.revenue).map((r,i)=>({...r,rank:i+1,cvr:r.uu>0?(r.orders/r.uu*100).toFixed(2):0,aov:r.orders>0?Math.round(r.revenue/r.orders):0,share:tot>0?(r.revenue/tot*100).toFixed(1):0}));
   document.getElementById("sku-tbody").innerHTML=ranked.slice(0,10).map((r,i)=>`<tr onclick="selSKU='${r.sku}';document.getElementById('sku-sel').value='${r.sku}';setTab('sku')"><td style="color:${i<3?"#f97316":"#334155"};font-weight:600">${r.rank}</td><td style="color:#93c5fd;font-size:10px">${r.sku}</td><td style="color:#94a3b8;font-family:'Noto Sans JP',sans-serif">${r.name||"—"}</td><td style="text-align:right;color:${activeMetric==="uu"?"#3b82f6":"#64748b"}">${r.uu>=1000?`${(r.uu/1000).toFixed(1)}K`:r.uu}</td><td style="text-align:right;color:${activeMetric==="cvr"?"#22c55e":"#64748b"}">${r.cvr}%</td><td style="text-align:right;color:${activeMetric==="aov"?"#a78bfa":"#64748b"}">¥${r.aov.toLocaleString()}</td><td style="text-align:right;color:${activeMetric==="revenue"?"#f97316":"#f1f5f9"};font-weight:500">¥${r.revenue.toLocaleString()}</td><td style="text-align:right;color:#a78bfa">${r.share}%</td><td><div class="mini-bar"><div class="mini-bar-fill" style="width:${Math.min(100,r.share*4)}%;background:${i<3?"#f97316":"#1e3a5f"}"></div></div></td></tr>`).join("");
