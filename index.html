@@ -297,7 +297,12 @@ input[type=date]:focus,select:focus{border-color:#3b82f6}
   </div>
 
   <div id="dl-offline-msg" style="background:#0d1320;border:1px solid #ef444430;border-radius:8px;padding:14px 18px;margin-bottom:14px;font-size:11px;color:#ef4444;font-family:'Noto Sans JP',sans-serif;line-height:2">
-    ローカルサーバーが起動していません。<code style="color:#a78bfa;font-family:'IBM Plex Mono',monospace">start_server.bat</code> をダブルクリックして起動してください。
+    ローカルサーバーが起動していません。<br/>
+    <span style="color:#94a3b8">初回：下のボタンで <code style="color:#a78bfa;font-family:'IBM Plex Mono',monospace">setup.bat</code> をダウンロードしてダブルクリック（クローン＆起動を自動実行）<br/>
+    2回目以降：クローン先の <code style="color:#a78bfa;font-family:'IBM Plex Mono',monospace">start_server.bat</code> をダブルクリック</span>
+    <div style="margin-top:10px">
+      <button id="dl-setup-btn" onclick="downloadSetupBat()" style="padding:6px 14px;background:#1e1b4b;border:1px solid #a78bfa;border-radius:6px;color:#a78bfa;font-size:11px;cursor:pointer;font-family:'Noto Sans JP',sans-serif">⬇ setup.bat をダウンロード</button>
+    </div>
   </div>
 
   <div id="dl-online-content" class="hidden">
@@ -530,7 +535,27 @@ function switchView(v){
 
 // ---- ダウンロード画面 ----
 const DL_SERVER="http://localhost:8765";
+const SETUP_BAT_URL="https://raw.githubusercontent.com/chu-pa1234/yogibo-ec-dashboard/master/setup.bat";
 let dlChannels=["rakuten","amazon","yahoo","own_ec"];
+
+async function downloadSetupBat(){
+  const btn=document.getElementById("dl-setup-btn");
+  btn.disabled=true;btn.textContent="取得中...";
+  try{
+    const res=await fetch(SETUP_BAT_URL);
+    const text=await res.text();
+    const blob=new Blob([text],{type:"application/octet-stream"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download="yogibo-ec-setup.bat";a.click();
+    URL.revokeObjectURL(url);
+    btn.textContent="✓ ダウンロード完了 — ダブルクリックで実行";
+    setTimeout(()=>{btn.disabled=false;btn.textContent="⬇ setup.bat をダウンロード";},5000);
+  }catch{
+    window.open("https://github.com/chu-pa1234/yogibo-ec-dashboard","_blank");
+    btn.disabled=false;btn.textContent="⬇ setup.bat をダウンロード";
+  }
+}
 
 function initDlView(){
   setDlPeriod(1,document.getElementById("dlp-1"));
