@@ -1,18 +1,16 @@
-# ============================================================
-#  user_config.py  ← このファイルを user_config.py にコピーして編集
-# ============================================================
-# このファイルをコピーして user_config.py という名前で保存し、
-# 各自のパスに書き換えてください。
-# user_config.py は .gitignore に追加済みなので他の人には共有されません。
+from pathlib import Path
+
+# Downloads フォルダを自動解決（ユーザー名のハードコード不要）
+_DL = Path.home() / "Downloads"
 
 # ダウンロード先フォルダ（各チャネルのCSV保存先）
 DOWNLOAD_DIRS = {
-    "amazon":  r"C:\Users\YOUR_NAME\Downloads\AMZ",
-    "yahoo":   r"C:\Users\YOUR_NAME\Downloads\PPM",
-    "rakuten": r"C:\Users\YOUR_NAME\Downloads\RKT",
-    "own_ec":  r"C:\Users\YOUR_NAME\Downloads\SPF",
+    "amazon":  str(_DL / "AMZ"),
+    "yahoo":   str(_DL / "PPM"),
+    "rakuten": str(_DL / "RKT"),
+    "own_ec":  str(_DL / "SPF"),
 }
 
 # マッピングファイルのパス
-AMAZON_MAPPING_FILE = r"C:\Users\YOUR_NAME\Downloads\Amazon代表コードと親ASIN突合せ表.xlsx"
-SHOPIFY_MAPPING_FILE = r"C:\Users\YOUR_NAME\Downloads\Book2.csv"
+AMAZON_MAPPING_FILE  = str(_DL / "Amazon代表コードと親ASIN突合せ表.xlsx")
+SHOPIFY_MAPPING_FILE = str(_DL / "Book2.csv")
